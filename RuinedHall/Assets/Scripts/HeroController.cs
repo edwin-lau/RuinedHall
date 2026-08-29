@@ -5,8 +5,8 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(Animator))]
 public class HeroController : MonoBehaviour
 {
-    [SerializeField] float walkSpeed = 3.2f;
-    [SerializeField] float runSpeed = 7.4f;
+    [SerializeField] float walkSpeed = 6.4f;
+    [SerializeField] float runSpeed = 14.8f;
     [SerializeField] float rotateSpeed = 720f;
     [SerializeField] float jumpHeight = 1.65f;
     [SerializeField] float gravity = -32f;
