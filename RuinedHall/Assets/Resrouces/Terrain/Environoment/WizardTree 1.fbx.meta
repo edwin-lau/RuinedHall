@@ -1,9 +1,14 @@
 fileFormatVersion: 2
-guid: c5030655b2fc141c897a37512f48cd5a
+guid: 7fad642c2838442f48540410f9b628ae
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Leaf_WizardTree
+    second: {fileID: 2100000, guid: 34538c98b5aca465d8ec07a9b06ecc39, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

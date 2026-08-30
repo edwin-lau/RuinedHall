@@ -3,7 +3,12 @@ guid: 28b0c8b4e808b4240804a56c29aa54c2
 ModelImporter:
   serializedVersion: 24501
   internalIDToNameTable: []
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: GreenLeaf_Tree01
+    second: {fileID: 2100000, guid: 4d9d530e5f88f432db588ae9b33ab467, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0
