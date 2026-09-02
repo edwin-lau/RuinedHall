@@ -43,3 +43,9 @@ Init.gradle
 /RuinedHall/Logs/
 /RuinedHall/UserSettings/
 /RuinedHall/obj/
+
+# Third-party store packs stay on disk only
+/RuinedHall/Assets/StorePackage/
+
+# UTS3 sample scenes/textures (large, optional)
+/RuinedHall/Packages/com.unity.toonshader/Samples~/
