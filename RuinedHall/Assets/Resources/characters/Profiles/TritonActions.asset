@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8497b73989b6848b486174637dd4af49, type: 3}
+  m_Name: TritonActions
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterActionProfile
+  defaultAction: Sleep
+  actions:
+  - id: Sleep
+    clip: {fileID: 7400000, guid: 6eb256e1a9a664049b828d108bd9be61, type: 2}
+    loop: 1
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Wake
+    clip: {fileID: 7400000, guid: bd16670924de0430ca94689ccce93300, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.08
+    impactTime: 0.4
+    effects: []
+  - id: FallAsleep
+    clip: {fileID: 7400000, guid: dd84d8360e1534b33941c4187248dd03, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.1
+    impactTime: 0.4
+    effects: []
+  - id: Idle
+    clip: {fileID: 7400000, guid: 64652939a7e6f4a4383e2b8c8a77693a, type: 2}
+    loop: 1
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Move
+    clip: {fileID: 7400000, guid: 273c09a1249de482592d6c79382f35e3, type: 2}
+    loop: 1
+    speed: 1
+    crossFade: 0.08
+    impactTime: 0.4
+    effects: []
+  - id: Attack1
+    clip: {fileID: 7400000, guid: df0ee961939bc48b987b3e1df113bd14, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.06
+    impactTime: 0.28
+    effects: []
+  - id: Attack2
+    clip: {fileID: 7400000, guid: ff3e25ab4ec5d4ccba163d3b1556ba2f, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.06
+    impactTime: 0.22
+    effects: []
+  - id: Death
+    clip: {fileID: 7400000, guid: bc3b32b625ac944a8a7c1ebf81eb2035, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.08
+    impactTime: 0.4
+    effects: []

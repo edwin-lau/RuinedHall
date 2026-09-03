@@ -17,6 +17,10 @@ public class GameplayBootstrap : MonoBehaviour
         HeroController hero = SetupHero(heroObject);
         SetupCamera(heroObject.transform);
         SetupHud(hero);
+        SetupRoosterSpawner(heroObject.transform);
+        SetupWildlife();
+        DeerHerdSetup.Ensure();
+        EliteActorSetup.EnsureNamedElites();
     }
 
     HeroController SetupHero(GameObject heroObject)
@@ -72,9 +76,35 @@ public class GameplayBootstrap : MonoBehaviour
 
     void SetupHud(HeroController hero)
     {
-        GameHud hud = GameHud.Create();
+        GameHud hud = FindFirstObjectByType<GameHud>();
+        if (hud == null)
+            hud = GameHud.Create();
         hero.SetJoystick(hud.Joystick);
+        hud.BindHero(hero);
         hud.PunchButton.Pressed += hero.Punch;
         hud.JumpButton.Pressed += hero.Jump;
+    }
+
+    void SetupRoosterSpawner(Transform hero)
+    {
+        EnemySpawner spawner = FindAnyObjectByType<EnemySpawner>();
+        if (spawner == null)
+            spawner = new GameObject("EnemySpawner").AddComponent<EnemySpawner>();
+        GameObject rooster = GameObject.Find("rooster");
+        spawner.Initialize(rooster, hero);
+    }
+
+    void SetupWildlife()
+    {
+        GameObject rabbit = GameObject.Find("rabbit");
+        GameObject eagle = GameObject.Find("Eagle");
+        if (rabbit == null)
+            return;
+
+        var hunt = rabbit.GetComponent<RabbitEagleHunt>();
+        if (hunt == null && rabbit.GetComponent<CharacterActionPlayer>() != null)
+            hunt = rabbit.AddComponent<RabbitEagleHunt>();
+        if (hunt != null)
+            hunt.BindEagle(eagle);
     }
 }

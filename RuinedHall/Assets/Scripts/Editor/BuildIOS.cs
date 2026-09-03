@@ -8,7 +8,7 @@ public static class BuildIOS
 {
     const string FlagPath = "Temp/BuildIOSNow.flag";
     const string OutputPath = "Builds/iOS";
-    const string IconPath = "Assets/Resrouces/characters/hero/imges/college.png";
+    const string IconPath = "Assets/Resources/characters/hero/imges/college.png";
 
     [InitializeOnLoadMethod]
     static void BuildIfFlagged()
@@ -72,7 +72,7 @@ public static class BuildIOS
         PlayerSettings.iOS.appleEnableAutomaticSigning = true;
         PlayerSettings.iOS.appleDeveloperTeamID = "L7S49HJY3G";
         PlayerSettings.iOS.targetOSVersionString = "15.0";
-        PlayerSettings.iOS.buildNumber = "2";
+        PlayerSettings.iOS.buildNumber = "3";
 
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
         PlayerSettings.allowedAutorotateToPortrait = false;

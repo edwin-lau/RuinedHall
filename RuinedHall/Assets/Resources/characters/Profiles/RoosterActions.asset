@@ -1,0 +1,133 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8497b73989b6848b486174637dd4af49, type: 3}
+  m_Name: RoosterActions
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterActionProfile
+  defaultAction: Idle
+  actions:
+  - id: Idle
+    clip: {fileID: 7400000, guid: 8fd961786aed64ff1a9e2e0a7dd2c08a, type: 2}
+    loop: 1
+    speed: 1
+    crossFade: 0.08
+    impactTime: 0.4
+    effects: []
+  - id: IdleVariation
+    clip: {fileID: 7400000, guid: 99a1cfb98488a4820a571446e68cbaee, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Alert
+    clip: {fileID: 7400000, guid: 94290f83d85a341f9ae113ee7606c0c6, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Move
+    clip: {fileID: 7400000, guid: 8c2677636a43340b6bdad1f7f16be371, type: 2}
+    loop: 1
+    speed: 1
+    crossFade: 0.1
+    impactTime: 0.4
+    effects: []
+  - id: Peck1
+    clip: {fileID: 7400000, guid: f68bbc616e5fa4e15bccb85ecc41e1b1, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.1
+    impactTime: 0.4
+    effects: []
+  - id: Peck2
+    clip: {fileID: 7400000, guid: 160fc9e04dbd94e9fa41f3c27bb82f25, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.1
+    impactTime: 0.4
+    effects: []
+  - id: Peck3
+    clip: {fileID: 7400000, guid: 6957e23226b674a5bb4254ea8a0c26b7, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.1
+    impactTime: 0.4
+    effects: []
+  - id: Attack1
+    clip: {fileID: 7400000, guid: f68bbc616e5fa4e15bccb85ecc41e1b1, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.06
+    impactTime: 0.38
+    effects:
+    - kind: 1
+      prefab: {fileID: 0}
+      triggerTime: 0.38
+      lifetime: 0.65
+      socketName: 
+      localPosition: {x: 0, y: 0.8, z: 0.7}
+      localEulerAngles: {x: 0, y: 0, z: 0}
+      followSocket: 0
+      color: {r: 1, g: 0.72, b: 0.12, a: 1}
+      size: 0.9
+  - id: Attack2
+    clip: {fileID: 7400000, guid: 160fc9e04dbd94e9fa41f3c27bb82f25, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.06
+    impactTime: 0.38
+    effects:
+    - kind: 1
+      prefab: {fileID: 0}
+      triggerTime: 0.38
+      lifetime: 0.65
+      socketName: 
+      localPosition: {x: 0, y: 0.8, z: 0.7}
+      localEulerAngles: {x: 0, y: 0, z: 0}
+      followSocket: 0
+      color: {r: 1, g: 0.72, b: 0.12, a: 1}
+      size: 0.9
+  - id: Attack3
+    clip: {fileID: 7400000, guid: 6957e23226b674a5bb4254ea8a0c26b7, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.06
+    impactTime: 0.38
+    effects:
+    - kind: 1
+      prefab: {fileID: 0}
+      triggerTime: 0.38
+      lifetime: 0.65
+      socketName: 
+      localPosition: {x: 0, y: 0.8, z: 0.7}
+      localEulerAngles: {x: 0, y: 0, z: 0}
+      followSocket: 0
+      color: {r: 1, g: 0.72, b: 0.12, a: 1}
+      size: 0.9
+  - id: Death
+    clip: {fileID: 7400000, guid: e1b8f095ffe374213a8ca24198bf6bd5, type: 2}
+    loop: 0
+    speed: 1
+    crossFade: 0.05
+    impactTime: 0.4
+    effects:
+    - kind: 2
+      prefab: {fileID: 0}
+      triggerTime: 0.42
+      lifetime: 1.1
+      socketName: 
+      localPosition: {x: 0, y: 0.1, z: 0}
+      localEulerAngles: {x: 0, y: 0, z: 0}
+      followSocket: 0
+      color: {r: 0.55, g: 0.42, b: 0.25, a: 0.8}
+      size: 1.1
