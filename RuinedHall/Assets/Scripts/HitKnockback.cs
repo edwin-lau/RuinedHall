@@ -13,8 +13,22 @@ public sealed class HitKnockback : MonoBehaviour
     float _until;
 
     public bool IsActive => Time.time < _until && _velocity.sqrMagnitude > 0.05f;
+    public Vector3 Velocity => IsActive ? _velocity : Vector3.zero;
 
-    public static void ApplyTo(Component target, Vector3 hitOrigin, float scale = 1f)
+    public void Tick(float deltaTime)
+    {
+        if (_controller == null)
+            _controller = GetComponent<CharacterController>();
+        if (Time.time >= _until || _velocity.sqrMagnitude < 0.05f)
+        {
+            _velocity = Vector3.zero;
+            return;
+        }
+
+        _velocity *= Mathf.Exp(-damping * deltaTime);
+    }
+
+    public static void ApplyTo(Component target, Vector3 hitOrigin, float scale = 1f, float liftScale = 1f)
     {
         if (target == null)
             return;
@@ -22,10 +36,10 @@ public sealed class HitKnockback : MonoBehaviour
         var knockback = target.GetComponent<HitKnockback>();
         if (knockback == null)
             knockback = target.gameObject.AddComponent<HitKnockback>();
-        knockback.Apply(hitOrigin, scale);
+        knockback.Apply(hitOrigin, scale, liftScale);
     }
 
-    public void Apply(Vector3 hitOrigin, float scale = 1f)
+    public void Apply(Vector3 hitOrigin, float scale = 1f, float liftScale = 1f)
     {
         if (_controller == null)
             _controller = GetComponent<CharacterController>();
@@ -37,7 +51,7 @@ public sealed class HitKnockback : MonoBehaviour
         direction.Normalize();
 
         scale = Mathf.Max(0.1f, scale);
-        _velocity = direction * impulse * scale + Vector3.up * lift * scale;
+        _velocity = direction * impulse * scale + Vector3.up * lift * scale * Mathf.Max(0f, liftScale);
         _until = Time.time + duration;
         enabled = true;
     }
@@ -49,6 +63,9 @@ public sealed class HitKnockback : MonoBehaviour
 
     void LateUpdate()
     {
+        if (GetComponent<HeroController>() != null)
+            return;
+
         if (_controller == null || !_controller.enabled || !isActiveAndEnabled)
             return;
 

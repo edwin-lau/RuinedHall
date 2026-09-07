@@ -35,8 +35,8 @@ ModelImporter:
       name: Hit
       takeName: mixamo.com
       internalID: -203655887218126122
-      firstFrame: 0
-      lastFrame: 40
+      firstFrame: 3.9000003
+      lastFrame: 27.2
       wrapMode: 0
       orientationOffsetY: 0
       level: 0

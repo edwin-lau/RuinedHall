@@ -12,11 +12,17 @@ public sealed class EnemySpawner : MonoBehaviour
     [SerializeField] float minSeparation = 2.2f;
     [SerializeField] float maxSlope = 32f;
     [SerializeField] int sampleAttempts = 28;
+    [Header("Performance LOD")]
+    [SerializeField] float campWakeRadius = 42f;
+    [SerializeField] float campSleepRadius = 52f;
+    [SerializeField] float nearTierRadius = 25f;
+    [SerializeField] float midTierRadius = 50f;
 
     sealed class Camp
     {
         public Vector3 Center;
         public int Capacity;
+        public bool Active;
         public readonly List<CharacterCombatAgent> Spawned = new();
         public int Pending;
     }
@@ -27,6 +33,14 @@ public sealed class EnemySpawner : MonoBehaviour
     {
         template = roosterTemplate;
         hero = heroTransform;
+    }
+
+    public void WakeCamp(int campIndex)
+    {
+        if (campIndex < 0 || campIndex >= _camps.Count)
+            return;
+
+        _camps[campIndex].Active = true;
     }
 
     void Start()
@@ -47,8 +61,9 @@ public sealed class EnemySpawner : MonoBehaviour
                 hero = heroController.transform;
         }
 
-        foreach (GameObject marker in markers)
+        for (int i = 0; i < markers.Count; i++)
         {
+            GameObject marker = markers[i];
             Vector3 center = marker.transform.position;
             if (TrySampleGround(center, out Vector3 grounded, out _) && !WaterProbe.IsInWater(grounded))
                 center = grounded;
@@ -60,10 +75,62 @@ public sealed class EnemySpawner : MonoBehaviour
             marker.SetActive(false);
         }
 
-        foreach (Camp camp in _camps)
+        for (int campIndex = 0; campIndex < _camps.Count; campIndex++)
         {
+            Camp camp = _camps[campIndex];
             for (int i = 0; i < camp.Capacity; i++)
-                SpawnAtCamp(camp);
+                SpawnAtCamp(camp, campIndex);
+        }
+
+        UpdatePerformanceLod();
+    }
+
+    void Update()
+    {
+        UpdatePerformanceLod();
+    }
+
+    void UpdatePerformanceLod()
+    {
+        if (hero == null)
+            return;
+
+        Vector3 heroPos = hero.position;
+        for (int campIndex = 0; campIndex < _camps.Count; campIndex++)
+        {
+            Camp camp = _camps[campIndex];
+            float campDistance = PlanarDistance(camp.Center, heroPos);
+            if (!camp.Active && campDistance <= campWakeRadius)
+                camp.Active = true;
+            else if (camp.Active && campDistance >= campSleepRadius)
+                camp.Active = false;
+
+            ApplyCampPerformance(camp, heroPos);
+        }
+    }
+
+    void ApplyCampPerformance(Camp camp, Vector3 heroPos)
+    {
+        for (int i = 0; i < camp.Spawned.Count; i++)
+        {
+            CharacterCombatAgent agent = camp.Spawned[i];
+            if (agent == null || agent.IsDead)
+                continue;
+
+            if (!camp.Active)
+            {
+                agent.SetCampDormant(true);
+                continue;
+            }
+
+            agent.SetCampDormant(false);
+            float distance = PlanarDistance(agent.transform.position, heroPos);
+            if (distance <= nearTierRadius)
+                agent.SetLodTier(CharacterCombatAgent.AgentLodTier.Near);
+            else if (distance <= midTierRadius)
+                agent.SetLodTier(CharacterCombatAgent.AgentLodTier.Mid);
+            else
+                agent.SetLodTier(CharacterCombatAgent.AgentLodTier.Far);
         }
     }
 
@@ -89,7 +156,7 @@ public sealed class EnemySpawner : MonoBehaviour
         return markers;
     }
 
-    void SpawnAtCamp(Camp camp)
+    void SpawnAtCamp(Camp camp, int campIndex)
     {
         if (template == null || AliveIn(camp) + camp.Pending >= camp.Capacity)
             return;
@@ -97,7 +164,7 @@ public sealed class EnemySpawner : MonoBehaviour
         if (!TryFindPoint(camp, out Vector3 point))
         {
             camp.Pending++;
-            StartCoroutine(RetrySpawn(camp));
+            StartCoroutine(RetrySpawn(camp, campIndex));
             return;
         }
 
@@ -113,13 +180,14 @@ public sealed class EnemySpawner : MonoBehaviour
             return;
 
         camp.Spawned.Add(agent);
+        agent.BindPerformanceCamp(this, campIndex, camp.Spawned.Count - 1);
     }
 
-    IEnumerator RetrySpawn(Camp camp)
+    IEnumerator RetrySpawn(Camp camp, int campIndex)
     {
         yield return new WaitForSeconds(1.2f);
         camp.Pending = Mathf.Max(0, camp.Pending - 1);
-        SpawnAtCamp(camp);
+        SpawnAtCamp(camp, campIndex);
     }
 
     static int AliveIn(Camp camp)
@@ -206,10 +274,25 @@ public sealed class EnemySpawner : MonoBehaviour
         return false;
     }
 
+    static float PlanarDistance(Vector3 a, Vector3 b)
+    {
+        a.y = 0f;
+        b.y = 0f;
+        return Vector3.Distance(a, b);
+    }
+
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 0.45f, 0.15f, 0.35f);
         foreach (Camp camp in _camps)
             Gizmos.DrawWireSphere(camp.Center, campRadius);
+
+        Gizmos.color = new Color(0.2f, 0.85f, 0.35f, 0.25f);
+        foreach (Camp camp in _camps)
+            Gizmos.DrawWireSphere(camp.Center, campWakeRadius);
+
+        Gizmos.color = new Color(0.85f, 0.2f, 0.2f, 0.2f);
+        foreach (Camp camp in _camps)
+            Gizmos.DrawWireSphere(camp.Center, campSleepRadius);
     }
 }

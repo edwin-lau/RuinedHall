@@ -109,6 +109,16 @@ public static class CharacterBodyFit
 
     public static float LowestContactY(Transform root)
     {
+        float y = LowestFootBoneY(root);
+        if (TryMeasureBodyBounds(root, out Bounds bounds))
+            y = Mathf.Min(y, bounds.min.y);
+        if (y < float.PositiveInfinity)
+            return y;
+        return root.position.y;
+    }
+
+    public static float LowestFootBoneY(Transform root)
+    {
         float y = float.PositiveInfinity;
         var animator = root.GetComponent<Animator>();
         if (animator != null && animator.isHuman)
@@ -120,11 +130,28 @@ public static class CharacterBodyFit
         }
 
         y = Mathf.Min(y, LowestNamedFootY(root));
-        if (TryMeasureBodyBounds(root, out Bounds bounds))
-            y = Mathf.Min(y, bounds.min.y);
-        if (y < float.PositiveInfinity)
-            return y;
-        return root.position.y;
+        return y;
+    }
+
+    public static void LiftFeetOutOfGround(CharacterController controller, Transform root)
+    {
+        if (root == null)
+            return;
+
+        float footY = LowestFootBoneY(root);
+        if (footY >= float.PositiveInfinity)
+            return;
+        if (!TryHitGround(root.position, root, out Vector3 ground))
+            return;
+
+        float bury = ground.y - footY;
+        if (bury <= 0.02f)
+            return;
+
+        if (controller != null && controller.enabled)
+            controller.Move(Vector3.up * bury);
+        else
+            root.position += Vector3.up * bury;
     }
 
     static float LowestNamedFootY(Transform root)

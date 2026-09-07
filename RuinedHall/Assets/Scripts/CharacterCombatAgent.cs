@@ -108,6 +108,18 @@ public sealed class CharacterCombatAgent : MonoBehaviour
     Vector3 _handArrowLocalPos = new Vector3(0.871f, 1.234f, -0.023f);
     Quaternion _handArrowLocalRot = Quaternion.Euler(-181.01f, 160.437f, 0f);
     Vector3 _handArrowLocalScale = Vector3.one * 1.619f;
+    EnemySpawner _perfSpawner;
+    int _perfCampIndex = -1;
+    bool _campDormant;
+    AgentLodTier _lodTier = AgentLodTier.Near;
+    int _lodPhase;
+
+    public enum AgentLodTier
+    {
+        Near,
+        Mid,
+        Far
+    }
 
     public bool IsDead => _dead;
     public bool IsPaused => _paused;
@@ -336,6 +348,28 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (_dead || _paused)
             return;
 
+        if (UsesPerformanceLod() && _campDormant)
+        {
+            MaintainPerformanceSleep();
+            return;
+        }
+
+        if (UsesPerformanceLod() &&
+            !NeedsFullPerformanceAi() &&
+            _lodTier == AgentLodTier.Far)
+        {
+            MaintainPerformanceSleep();
+            return;
+        }
+
+        if (UsesPerformanceLod() &&
+            !NeedsFullPerformanceAi() &&
+            _lodTier == AgentLodTier.Mid &&
+            (Time.frameCount + _lodPhase) % 3 != 0)
+        {
+            return;
+        }
+
         if (_knockback == null)
             _knockback = GetComponent<HitKnockback>();
         if (_knockback != null && _knockback.IsActive)
@@ -378,6 +412,14 @@ public sealed class CharacterCombatAgent : MonoBehaviour
             KeepDummyPlanted();
             if (!_hitReacting)
                 PlayIfAvailable(idleAction);
+            return;
+        }
+
+        if (UsesPerformanceLod() &&
+            !NeedsFullPerformanceAi() &&
+            _lodTier == AgentLodTier.Mid)
+        {
+            UpdateMidTierAi();
             return;
         }
 
@@ -491,6 +533,9 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (_dead || amount <= 0)
             return;
 
+        if (UsesPerformanceLod())
+            ForceWakeFromPerformanceLod();
+
         if (_waitingToSpawn)
             BeginGroundSpawn();
 
@@ -575,6 +620,117 @@ public sealed class CharacterCombatAgent : MonoBehaviour
     {
         _paused = false;
         _actions.Resume();
+    }
+
+    public void BindPerformanceCamp(EnemySpawner spawner, int campIndex, int lodPhase)
+    {
+        _perfSpawner = spawner;
+        _perfCampIndex = campIndex;
+        _campDormant = true;
+        _lodTier = AgentLodTier.Far;
+        _lodPhase = ((lodPhase % 3) + 3) % 3;
+        EnterPerformanceSleep();
+    }
+
+    public void SetCampDormant(bool dormant)
+    {
+        if (trainingDummy || elite || _perfCampIndex < 0)
+            return;
+        if (_campDormant == dormant)
+            return;
+        if (dormant && NeedsFullPerformanceAi())
+            return;
+
+        _campDormant = dormant;
+        if (dormant)
+            EnterPerformanceSleep();
+        else
+            ExitPerformanceSleep();
+    }
+
+    public void SetLodTier(AgentLodTier tier)
+    {
+        if (trainingDummy || elite || _perfCampIndex < 0 || _campDormant)
+            return;
+        if (NeedsFullPerformanceAi())
+            tier = AgentLodTier.Near;
+        if (_lodTier == tier)
+            return;
+
+        AgentLodTier previous = _lodTier;
+        _lodTier = tier;
+        if (tier == AgentLodTier.Far)
+            EnterPerformanceSleep();
+        else if (previous == AgentLodTier.Far)
+            ExitPerformanceSleep();
+    }
+
+    void ForceWakeFromPerformanceLod()
+    {
+        if (_perfCampIndex < 0)
+            return;
+
+        _perfSpawner?.WakeCamp(_perfCampIndex);
+        _campDormant = false;
+        _lodTier = AgentLodTier.Near;
+        ExitPerformanceSleep();
+    }
+
+    bool NeedsFullPerformanceAi()
+    {
+        return IsInCombat || _hitReacting || _waking || _attacking || _waitingToSpawn || _spawning;
+    }
+
+    bool UsesPerformanceLod()
+    {
+        return _perfCampIndex >= 0 && !trainingDummy && !elite;
+    }
+
+    void EnterPerformanceSleep()
+    {
+        _chasing = false;
+        _attacking = false;
+        _patrolling = false;
+        _idleVariationPlaying = false;
+        ApplyMovement(Vector3.zero);
+        if (_actions != null && !_actions.IsPaused)
+            _actions.Pause();
+        if (_healthBar != null)
+            _healthBar.Hide();
+    }
+
+    void ExitPerformanceSleep()
+    {
+        if (_actions != null && _actions.IsPaused)
+            _actions.Resume();
+    }
+
+    void MaintainPerformanceSleep()
+    {
+        ApplyMovement(Vector3.zero);
+        if (_actions != null && !_actions.IsPaused)
+            _actions.Pause();
+    }
+
+    void UpdateMidTierAi()
+    {
+        if (_knockback == null)
+            _knockback = GetComponent<HitKnockback>();
+        if (_knockback != null && _knockback.IsActive)
+        {
+            ApplyMovement(Vector3.zero);
+            return;
+        }
+
+        if (_hitReacting)
+        {
+            ApplyMovement(Vector3.zero);
+            if (!ActionFinished())
+                return;
+            _hitReacting = false;
+        }
+
+        UpdatePatrolOrIdle();
     }
 
     public bool PlayAction(string actionId, bool restart = true)

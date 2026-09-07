@@ -53,10 +53,12 @@ public class HeroController : MonoBehaviour
     bool _jumpLeftGround;
     bool _jumpLocksUntilAnim;
     Vector3 _jumpRootDelta;
+    float _hitHipLocalY = -1f;
     ActionKind _action;
     static readonly string[] ComboStates = { "Punch1", "Punch2", "Punch3", "Punch4" };
     const float ComboHitNormalized = 0.38f;
     const float ComboChainNormalized = 0.5f;
+    const float HitMinDuration = 0.35f;
 
     enum ActionKind
     {
@@ -233,7 +235,7 @@ public class HeroController : MonoBehaviour
 
         _currentHealth = Mathf.Max(0, _currentHealth - amount);
         NotifyHealth();
-        HitKnockback.ApplyTo(this, hitOrigin, _currentHealth == 0 ? 1.35f : 1f);
+        HitKnockback.ApplyTo(this, hitOrigin, _currentHealth == 0 ? 1.35f : 1f, 0f);
         _knockback = GetComponent<HitKnockback>();
         if (_currentHealth == 0)
         {
@@ -243,8 +245,15 @@ public class HeroController : MonoBehaviour
 
         ResetPunchCombo();
         SetTravelJumpRootMotion(false);
+        _moveHoldTime = 0f;
+        _currentSpeed = 0f;
+        _coastDirection = Vector3.zero;
+        _running = false;
+        _verticalVelocity.y = 0f;
+        CacheStandingHip();
         _action = ActionKind.Hit;
-        _actionUntil = Time.time + PlayAndMeasure("Hit", 0.05f, true);
+        float hitLength = PlayAndMeasure("Hit", 0.05f, true);
+        _actionUntil = Time.time + Mathf.Max(HitMinDuration, hitLength);
     }
 
     void Awake()
@@ -294,6 +303,7 @@ public class HeroController : MonoBehaviour
         }
 
         UpdatePunchCombo();
+        UpdateHitReaction();
 
         bool finishTravelJump = false;
         if (_action == ActionKind.Jump)
@@ -312,12 +322,10 @@ public class HeroController : MonoBehaviour
         if (_action != ActionKind.None &&
             Time.time >= _actionUntil &&
             _action != ActionKind.Jump &&
-            _action != ActionKind.Punch)
+            _action != ActionKind.Punch &&
+            _action != ActionKind.Hit)
         {
-            bool fromHit = _action == ActionKind.Hit;
             _action = ActionKind.None;
-            if (fromHit)
-                PlayState("Idle", 0.08f, true);
         }
 
         if (_action == ActionKind.Jump &&
@@ -331,8 +339,9 @@ public class HeroController : MonoBehaviour
             _knockback = GetComponent<HitKnockback>();
         if (_knockback != null && _knockback.IsActive)
             planar *= 0.12f;
-        if (_action == ActionKind.Hit)
-            planar *= 0.08f;
+        bool hitReacting = _action == ActionKind.Hit;
+        if (hitReacting)
+            planar = Vector3.zero;
         bool punching = _action == ActionKind.Punch;
         if (punching)
             planar = Vector3.zero;
@@ -389,9 +398,22 @@ public class HeroController : MonoBehaviour
 
         NotifyRunStamina();
 
-        if (_controller.isGrounded && _verticalVelocity.y < 0f)
-            _verticalVelocity.y = -2f;
-        _verticalVelocity.y += gravity * Time.deltaTime;
+        if (_knockback != null)
+            _knockback.Tick(Time.deltaTime);
+
+        if (hitReacting)
+        {
+            if (_controller.isGrounded)
+                _verticalVelocity.y = -2f;
+            else
+                _verticalVelocity.y += gravity * Time.deltaTime;
+        }
+        else
+        {
+            if (_controller.isGrounded && _verticalVelocity.y < 0f)
+                _verticalVelocity.y = -2f;
+            _verticalVelocity.y += gravity * Time.deltaTime;
+        }
 
         if (travelJump)
         {
@@ -402,10 +424,12 @@ public class HeroController : MonoBehaviour
         }
         else
         {
-            Vector3 motion = !punching && _currentSpeed > 0.05f && _coastDirection.sqrMagnitude > 0.01f
+            Vector3 motion = !punching && !hitReacting && _currentSpeed > 0.05f && _coastDirection.sqrMagnitude > 0.01f
                 ? _coastDirection * _currentSpeed
                 : Vector3.zero;
             motion += _verticalVelocity;
+            if (_knockback != null && _knockback.IsActive)
+                motion += _knockback.Velocity;
             _controller.Move(motion * Time.deltaTime);
         }
 
@@ -424,6 +448,27 @@ public class HeroController : MonoBehaviour
             else
                 PlayLocomotion("Walk");
         }
+    }
+
+    void UpdateHitReaction()
+    {
+        if (_action != ActionKind.Hit)
+            return;
+
+        if (Time.time < _actionUntil)
+            return;
+        if (CurrentNormalizedTime() < 1f && Time.time < _actionUntil + 0.45f)
+            return;
+
+        FinishHitReaction();
+    }
+
+    void FinishHitReaction()
+    {
+        _action = ActionKind.None;
+        _verticalVelocity.y = -2f;
+        PlayState("Idle", 0.08f, true);
+        CharacterBodyFit.LiftFeetOutOfGround(_controller, transform);
     }
 
     void ReadKeyboard()
@@ -569,6 +614,8 @@ public class HeroController : MonoBehaviour
             FitBodyToCurrentScale();
 
         LockLocomotionSway();
+        if (_action == ActionKind.Hit)
+            CharacterBodyFit.LiftFeetOutOfGround(_controller, transform);
         UpdatePunchRangeVisual();
     }
 
@@ -642,7 +689,8 @@ public class HeroController : MonoBehaviour
     {
         if (_animator == null || !_animator.isHuman)
             return;
-        if (_playingState != "Walk" && _playingState != "Run" && _action != ActionKind.Punch)
+        if (_playingState != "Walk" && _playingState != "Run" &&
+            _action != ActionKind.Punch && _action != ActionKind.Hit)
             return;
 
         _animator.applyRootMotion = false;
@@ -666,6 +714,12 @@ public class HeroController : MonoBehaviour
         local.x = 0f;
         if (_action == ActionKind.Punch)
             local.z = 0f;
+        if (_action == ActionKind.Hit)
+        {
+            local.z = 0f;
+            if (_hitHipLocalY > 0.05f)
+                local.y = Mathf.Max(_hitHipLocalY - 0.12f, local.y);
+        }
         hips.position = transform.TransformPoint(local);
     }
 
@@ -675,6 +729,17 @@ public class HeroController : MonoBehaviour
             _controller = GetComponent<CharacterController>();
         CharacterBodyFit.Apply(_controller, transform);
         _fittedLossyScale = transform.lossyScale;
+    }
+
+    void CacheStandingHip()
+    {
+        _hitHipLocalY = -1f;
+        if (_animator == null || !_animator.isHuman)
+            return;
+        Transform hips = _animator.GetBoneTransform(HumanBodyBones.Hips);
+        if (hips == null)
+            return;
+        _hitHipLocalY = transform.InverseTransformPoint(hips.position).y;
     }
 
     void BeginPunch(int comboIndex)
