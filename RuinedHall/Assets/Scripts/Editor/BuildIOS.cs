@@ -11,23 +11,20 @@ public static class BuildIOS
     const string IconPath = "Assets/Resources/characters/hero/imges/college.png";
 
     [InitializeOnLoadMethod]
-    static void BuildIfFlagged()
+    static void RegisterBuildHook()
+    {
+        EditorApplication.update -= TryBuildIfFlagged;
+        EditorApplication.update += TryBuildIfFlagged;
+    }
+
+    static void TryBuildIfFlagged()
     {
         if (!File.Exists(FlagPath))
-        {
             return;
-        }
 
-        EditorApplication.delayCall += () =>
-        {
-            if (!File.Exists(FlagPath))
-            {
-                return;
-            }
-
-            File.Delete(FlagPath);
-            Build();
-        };
+        EditorApplication.update -= TryBuildIfFlagged;
+        File.Delete(FlagPath);
+        Build();
     }
 
     [MenuItem("Build/iOS Device")]
@@ -72,7 +69,7 @@ public static class BuildIOS
         PlayerSettings.iOS.appleEnableAutomaticSigning = true;
         PlayerSettings.iOS.appleDeveloperTeamID = "L7S49HJY3G";
         PlayerSettings.iOS.targetOSVersionString = "15.0";
-        PlayerSettings.iOS.buildNumber = "3";
+        PlayerSettings.iOS.buildNumber = "4";
 
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
         PlayerSettings.allowedAutorotateToPortrait = false;

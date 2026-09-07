@@ -189,12 +189,18 @@ public sealed class EnemySpawner : MonoBehaviour
 
     bool IsOccupied(Vector3 point)
     {
-        foreach (var agent in FindObjectsByType<CharacterCombatAgent>(FindObjectsInactive.Exclude))
+        float minSqr = minSeparation * minSeparation;
+        for (int c = 0; c < _camps.Count; c++)
         {
-            if (agent == null || agent.IsDead)
-                continue;
-            if (Vector3.Distance(agent.transform.position, point) < minSeparation)
-                return true;
+            List<CharacterCombatAgent> spawned = _camps[c].Spawned;
+            for (int i = 0; i < spawned.Count; i++)
+            {
+                CharacterCombatAgent agent = spawned[i];
+                if (agent == null || agent.IsDead)
+                    continue;
+                if ((agent.transform.position - point).sqrMagnitude < minSqr)
+                    return true;
+            }
         }
 
         return false;

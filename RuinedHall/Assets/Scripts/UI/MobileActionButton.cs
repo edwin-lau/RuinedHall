@@ -10,6 +10,7 @@ public class MobileActionButton : MonoBehaviour, IPointerDownHandler, IPointerUp
     bool _pressed;
 
     public event Action Pressed;
+    public bool IsHeld => _pressed;
 
     void Awake()
     {

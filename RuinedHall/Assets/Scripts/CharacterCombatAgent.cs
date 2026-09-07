@@ -64,6 +64,7 @@ public sealed class CharacterCombatAgent : MonoBehaviour
     [SerializeField] bool elite;
     [SerializeField] string eliteTitle;
     [SerializeField] int goldReward = 3;
+    [SerializeField] bool trainingDummy;
 
     CharacterActionPlayer _actions;
     CharacterController _controller;
@@ -72,13 +73,11 @@ public sealed class CharacterCombatAgent : MonoBehaviour
     int _health;
     float _verticalSpeed;
     float _nextAttackTime;
-    float _attackHitTime;
-    float _attackEndTime;
-    float _hitReactionEndTime;
+    float _attackHitNormalized;
     float _nextIdleVariationTime;
-    float _idleVariationEndTime;
     bool _attackApplied;
     bool _attacking;
+    bool _hitReacting;
     bool _chasing;
     bool _idleVariationPlaying;
     bool _paused;
@@ -94,20 +93,27 @@ public sealed class CharacterCombatAgent : MonoBehaviour
     float _patrolGiveUpTime;
     float _stuckTimer;
     float _lastProgressDistance;
-    float _wakeUntil;
-    float _fallAsleepUntil;
     int _playerHitsLanded;
     WorldHealthBar _healthBar;
     float _animSpeed = 1f;
     bool _waitingToSpawn;
     bool _spawning;
-    float _spawnUntil;
+    PunchRangeDisplay _attackRange;
+    float _dummyPlantedY;
+    bool _dummyPlanted;
+    int _dummyPlantFrames;
     Renderer[] _visualRenderers;
+    Transform _handArrow;
+    Transform _handArrowParent;
+    Vector3 _handArrowLocalPos = new Vector3(0.871f, 1.234f, -0.023f);
+    Quaternion _handArrowLocalRot = Quaternion.Euler(-181.01f, 160.437f, 0f);
+    Vector3 _handArrowLocalScale = Vector3.one * 1.619f;
 
     public bool IsDead => _dead;
     public bool IsPaused => _paused;
     public bool IsInCombat => _chasing || _attacking || _retreating;
     public bool IsElite => elite;
+    public bool IsTrainingDummy => trainingDummy;
     public string EliteTitle => eliteTitle;
     public int GoldReward => goldReward;
     public int CurrentHealth => _health;
@@ -162,6 +168,22 @@ public sealed class CharacterCombatAgent : MonoBehaviour
     public void ApplyPassiveUntilHit(bool value)
     {
         passiveUntilHit = value;
+    }
+
+    public void ApplyTrainingDummy(string title = "肉桩")
+    {
+        trainingDummy = true;
+        elite = true;
+        eliteTitle = title ?? "肉桩";
+        goldReward = 0;
+        patrol = false;
+        passiveUntilHit = true;
+        chargeOnAttack = false;
+        sleepUntilHit = false;
+        spawnFromGround = false;
+        maxHealth = 200;
+        _health = maxHealth;
+        NotifyHealth();
     }
 
     public void ApplyChargeOnAttack(bool value)
@@ -222,10 +244,91 @@ public sealed class CharacterCombatAgent : MonoBehaviour
             ScheduleIdleVariation();
         }
 
+        if (trainingDummy)
+            PlantDummy();
+
         _healthBar = WorldHealthBar.Attach(this);
         if ((sleepUntilHit || spawnFromGround) && _healthBar != null)
             _healthBar.Hide();
+        if (HasRangedThrow)
+            CacheHandArrow();
         NotifyHealth();
+    }
+
+    void LateUpdate()
+    {
+        if (trainingDummy && _dummyPlantFrames < 24)
+        {
+            PlantDummy();
+            _dummyPlantFrames++;
+        }
+
+        UpdateEliteRangeVisual();
+    }
+
+    void UpdateEliteRangeVisual()
+    {
+        if (!elite || trainingDummy || _dead || _waitingToSpawn || _sleeping)
+        {
+            if (_attackRange != null)
+                _attackRange.Hide();
+            return;
+        }
+
+        if (_attackRange == null)
+            _attackRange = PunchRangeDisplay.Create();
+
+        float inner = attackRange;
+        float outer = HasRangedThrow ? projectileRange : attackRange * 1.35f;
+        _attackRange.ShowRings(
+            transform.position,
+            inner,
+            outer,
+            _attacking,
+            _attackApplied,
+            "出手",
+            HasRangedThrow ? "射程" : "打中");
+    }
+
+    void OnDestroy()
+    {
+        if (_attackRange != null)
+            Destroy(_attackRange.gameObject);
+    }
+
+    public void RestoreHandArrow()
+    {
+        if (_dead || _handArrow != null || string.IsNullOrWhiteSpace(projectileResource))
+            return;
+
+        GameObject prefab = Resources.Load<GameObject>(projectileResource);
+        if (prefab == null)
+            return;
+
+        Transform parent = _handArrowParent != null ? _handArrowParent : transform;
+        GameObject arrow = Instantiate(prefab, parent);
+        arrow.name = "Skeleton_Arrow";
+        Transform t = arrow.transform;
+        t.localPosition = _handArrowLocalPos;
+        t.localRotation = _handArrowLocalRot;
+        t.localScale = _handArrowLocalScale;
+        _handArrow = t;
+    }
+
+    void CacheHandArrow()
+    {
+        foreach (Transform child in GetComponentsInChildren<Transform>(true))
+        {
+            if (!child.name.Equals("Skeleton_Arrow", System.StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            _handArrow = child;
+            _handArrowParent = child.parent;
+            _handArrowLocalPos = child.localPosition;
+            _handArrowLocalRot = child.localRotation;
+            _handArrowLocalScale = child.localScale;
+            return;
+        }
     }
 
     void Update()
@@ -238,7 +341,7 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (_knockback != null && _knockback.IsActive)
         {
             ApplyMovement(Vector3.zero);
-            if (Time.time < _hitReactionEndTime)
+            if (_hitReacting && !ActionFinished())
                 return;
         }
 
@@ -254,14 +357,27 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (_spawning)
         {
             ApplyMovement(Vector3.zero);
-            if (Time.time >= _spawnUntil)
+            if (ActionFinished())
                 FinishGroundSpawn();
             return;
         }
 
-        if (Time.time < _hitReactionEndTime)
+        if (_hitReacting)
         {
-            ApplyMovement(Vector3.zero);
+            if (trainingDummy)
+                KeepDummyPlanted();
+            else
+                ApplyMovement(Vector3.zero);
+            if (!ActionFinished())
+                return;
+            _hitReacting = false;
+        }
+
+        if (trainingDummy)
+        {
+            KeepDummyPlanted();
+            if (!_hitReacting)
+                PlayIfAvailable(idleAction);
             return;
         }
 
@@ -275,7 +391,7 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (_waking)
         {
             ApplyMovement(Vector3.zero);
-            if (Time.time >= _wakeUntil)
+            if (ActionFinished())
             {
                 _waking = false;
                 _chasing = true;
@@ -288,7 +404,7 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (_fallingAsleep)
         {
             ApplyMovement(Vector3.zero);
-            if (Time.time >= _fallAsleepUntil)
+            if (ActionFinished())
                 EnterSleep();
             return;
         }
@@ -327,7 +443,7 @@ public sealed class CharacterCombatAgent : MonoBehaviour
                 ApplyMovement(offset.normalized * moveSpeed);
             else
                 ApplyMovement(Vector3.zero);
-            if (!_attackApplied && Time.time >= _attackHitTime)
+            if (!_attackApplied && _actions.NormalizedTime >= _attackHitNormalized)
             {
                 _attackApplied = true;
                 if (HasRangedThrow)
@@ -336,7 +452,7 @@ public sealed class CharacterCombatAgent : MonoBehaviour
                     ApplyMeleeHit(distance);
             }
 
-            if (Time.time >= _attackEndTime)
+            if (ActionFinished())
                 _attacking = false;
             return;
         }
@@ -378,6 +494,24 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (_waitingToSpawn)
             BeginGroundSpawn();
 
+        if (trainingDummy)
+        {
+            _health = Mathf.Max(0, _health - amount);
+            NotifyHealth();
+            DamagePopup.Spawn(HeadPoint(), amount);
+            _chasing = false;
+            _attacking = false;
+            _patrolling = false;
+            if (_health <= 0)
+                StartCoroutine(RefillDummyHealth());
+            if (_actions.TryGetAction(hitAction, out _))
+            {
+                _actions.Play(hitAction, true);
+                _hitReacting = true;
+            }
+            return;
+        }
+
         _health = Mathf.Max(0, _health - amount);
         NotifyHealth();
         _patrolling = false;
@@ -398,10 +532,10 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         _chasing = true;
 
         _attacking = false;
-        if (_actions.TryGetAction(hitAction, out CharacterActionDefinition hit))
+        if (_actions.TryGetAction(hitAction, out _))
         {
             _actions.Play(hitAction, true);
-            _hitReactionEndTime = Time.time + hit.Duration;
+            _hitReacting = true;
         }
     }
 
@@ -450,7 +584,10 @@ public sealed class CharacterCombatAgent : MonoBehaviour
 
     void AcquireTarget()
     {
-        _target = FindAnyObjectByType<HeroController>();
+        HeroController hero = HeroController.Active;
+        if (hero == null || !hero.isActiveAndEnabled)
+            hero = FindAnyObjectByType<HeroController>();
+        _target = hero;
     }
 
     void BeginAttack()
@@ -464,14 +601,12 @@ public sealed class CharacterCombatAgent : MonoBehaviour
             !_actions.TryGetAction(actionId, out CharacterActionDefinition attack))
             return;
 
-        float duration = Mathf.Max(0.08f, attack.Duration / Mathf.Max(0.2f, _animSpeed));
+        float duration = ActionPlayback(attack);
         _attacking = true;
         _attackApplied = false;
-        float impact = HasRangedThrow
-            ? Mathf.Clamp(duration * 0.42f, 0.12f, duration)
-            : Mathf.Min(attack.ImpactTime / Mathf.Max(0.2f, _animSpeed), duration);
-        _attackHitTime = Time.time + impact;
-        _attackEndTime = Time.time + duration;
+        _attackHitNormalized = HasRangedThrow
+            ? 0.42f
+            : AnimPlayback.ClipNormalized(attack.ImpactTime, attack.Clip);
         _nextAttackTime = Time.time + Mathf.Max(attackCooldown, duration * 0.55f);
         _idleVariationPlaying = false;
         _patrolling = false;
@@ -498,21 +633,43 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (_target == null || string.IsNullOrWhiteSpace(projectileResource))
             return;
 
+        if (_handArrow == null)
+            CacheHandArrow();
+
+        Vector3 aim = _target.transform.position;
+        if (_handArrow != null)
+        {
+            Transform arrow = _handArrow;
+            _handArrow = null;
+            Vector3 handDirection = aim - arrow.position;
+            handDirection.y = 0f;
+            if (handDirection.sqrMagnitude < 0.01f)
+                handDirection = transform.forward;
+            SkeletonArrow.LaunchFromHand(
+                arrow,
+                handDirection.normalized,
+                this,
+                attackDamage,
+                projectileRange,
+                projectileSpeed,
+                projectileStickDuration);
+            _playerHitsLanded++;
+            return;
+        }
+
         GameObject prefab = Resources.Load<GameObject>(projectileResource);
         if (prefab == null)
             return;
 
         Vector3 origin = transform.position + Vector3.up * 1.25f + transform.forward * 0.7f;
-        Vector3 aim = _target.transform.position;
-        Vector3 direction = aim - origin;
-        direction.y = 0f;
-        if (direction.sqrMagnitude < 0.01f)
-            direction = transform.forward;
-        direction.y = 0f;
+        Vector3 launchDirection = aim - origin;
+        launchDirection.y = 0f;
+        if (launchDirection.sqrMagnitude < 0.01f)
+            launchDirection = transform.forward;
         SkeletonArrow.Launch(
             prefab,
             origin,
-            direction.normalized,
+            launchDirection.normalized,
             this,
             attackDamage,
             projectileRange,
@@ -550,14 +707,13 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         SetVisualsVisible(true);
         if (_controller != null)
             _controller.enabled = true;
-        if (_actions != null && _actions.TryGetAction(spawnAction, out CharacterActionDefinition spawn))
+        if (_actions != null && _actions.TryGetAction(spawnAction, out _))
         {
             _actions.Play(spawnAction, true);
-            _spawnUntil = Time.time + Mathf.Max(0.2f, spawn.Duration / Mathf.Max(0.2f, _animSpeed));
         }
         else
         {
-            _spawnUntil = Time.time;
+            FinishGroundSpawn();
         }
     }
 
@@ -604,14 +760,14 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         _retreating = false;
         _waking = true;
         _playerHitsLanded = 0;
-        if (_actions.TryGetAction(wakeAction, out CharacterActionDefinition wake))
+        if (_actions.TryGetAction(wakeAction, out _))
         {
             _actions.Play(wakeAction, true);
-            _wakeUntil = Time.time + Mathf.Max(0.15f, wake.Duration);
         }
         else
         {
-            _wakeUntil = Time.time;
+            _waking = false;
+            _chasing = true;
         }
 
         if (_healthBar != null)
@@ -635,10 +791,9 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (distance <= Mathf.Max(0.7f, patrolArriveDistance))
         {
             _retreating = false;
-            if (_actions.TryGetAction(fallAsleepAction, out CharacterActionDefinition fallAsleep))
+            if (_actions.TryGetAction(fallAsleepAction, out _))
             {
                 _fallingAsleep = true;
-                _fallAsleepUntil = Time.time + Mathf.Max(0.15f, fallAsleep.Duration);
                 _actions.Play(fallAsleepAction, true);
                 ApplyMovement(Vector3.zero);
                 return;
@@ -665,7 +820,7 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         if (_idleVariationPlaying)
         {
             ApplyMovement(Vector3.zero);
-            if (Time.time < _idleVariationEndTime)
+            if (!ActionFinished())
                 return;
 
             _idleVariationPlaying = false;
@@ -792,10 +947,9 @@ public sealed class CharacterCombatAgent : MonoBehaviour
             return;
 
         string variation = idleVariations[UnityEngine.Random.Range(0, idleVariations.Length)];
-        if (_actions.TryGetAction(variation, out CharacterActionDefinition action))
+        if (_actions.TryGetAction(variation, out _))
         {
             _idleVariationPlaying = true;
-            _idleVariationEndTime = Time.time + Mathf.Max(0.1f, action.Duration);
             _actions.Play(variation, true);
             if (variation.IndexOf("jump", System.StringComparison.OrdinalIgnoreCase) >= 0)
                 _verticalSpeed = 7.2f;
@@ -855,7 +1009,7 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         ApplyMovement(Vector3.zero);
         if (_idleVariationPlaying)
         {
-            if (Time.time < _idleVariationEndTime)
+            if (!ActionFinished())
                 return;
 
             _idleVariationPlaying = false;
@@ -867,10 +1021,9 @@ public sealed class CharacterCombatAgent : MonoBehaviour
             Time.time >= _nextIdleVariationTime)
         {
             string variation = idleVariations[UnityEngine.Random.Range(0, idleVariations.Length)];
-            if (_actions.TryGetAction(variation, out CharacterActionDefinition action))
+            if (_actions.TryGetAction(variation, out _))
             {
                 _idleVariationPlaying = true;
-                _idleVariationEndTime = Time.time + Mathf.Max(0.1f, action.Duration);
                 _actions.Play(variation, true);
                 return;
             }
@@ -939,6 +1092,60 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         return _actions.Play(actionId, restart);
     }
 
+    float ActionPlayback(CharacterActionDefinition action)
+    {
+        return AnimPlayback.Length(action, _animSpeed);
+    }
+
+    void PlantDummy()
+    {
+        CharacterBodyFit.SnapFeetToGround(transform);
+        _dummyPlantedY = transform.position.y;
+        _dummyPlanted = true;
+        _verticalSpeed = 0f;
+    }
+
+    void KeepDummyPlanted()
+    {
+        if (!_dummyPlanted)
+            PlantDummy();
+
+        Vector3 position = transform.position;
+        if (Mathf.Abs(position.y - _dummyPlantedY) <= 0.02f)
+            return;
+
+        bool wasEnabled = _controller != null && _controller.enabled;
+        if (_controller != null)
+            _controller.enabled = false;
+        position.y = _dummyPlantedY;
+        transform.position = position;
+        if (_controller != null)
+            _controller.enabled = wasEnabled;
+    }
+
+    Vector3 HeadPoint()
+    {
+        if (_controller != null && _controller.enabled)
+            return new Vector3(transform.position.x, _controller.bounds.max.y, transform.position.z);
+        if (CharacterBodyFit.TryMeasureWorldBounds(transform, out Bounds bounds))
+            return new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
+        return transform.position + Vector3.up * 1.8f;
+    }
+
+    IEnumerator RefillDummyHealth()
+    {
+        yield return new WaitForSeconds(0.45f);
+        if (!trainingDummy || _dead)
+            yield break;
+        _health = maxHealth;
+        NotifyHealth();
+    }
+
+    bool ActionFinished()
+    {
+        return _actions == null || _actions.PlaybackFinished;
+    }
+
     IEnumerator DieAndFade()
     {
         _dead = true;
@@ -961,7 +1168,7 @@ public sealed class CharacterCombatAgent : MonoBehaviour
         float deathDuration = 0f;
         if (_actions.TryGetAction(deathAction, out CharacterActionDefinition death))
         {
-            deathDuration = death.Duration;
+            deathDuration = ActionPlayback(death);
             _actions.Play(deathAction, true);
         }
 

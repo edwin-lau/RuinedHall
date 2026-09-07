@@ -6,6 +6,29 @@ public static class EliteActorSetup
     {
         SkeletonRogueSetup.Ensure();
         TryEnsure("Rogue");
+        EnsureThorDummy();
+    }
+
+    static void EnsureThorDummy()
+    {
+        GameObject actor = GameObject.Find("thor-god") ?? GameObject.Find("thor");
+        if (actor == null)
+            return;
+
+        if (actor.GetComponent<CharacterCombatAgent>() == null)
+        {
+            if (actor.GetComponent<CharacterActionPlayer>() == null)
+            {
+                var player = actor.AddComponent<CharacterActionPlayer>();
+                CharacterActionProfile profile = BuildProfileFromAnimator(actor);
+                if (profile != null)
+                    player.SetProfile(profile);
+            }
+
+            if (actor.GetComponent<CharacterController>() == null)
+                actor.AddComponent<CharacterController>();
+            actor.AddComponent<CharacterCombatAgent>();
+        }
     }
 
     static void TryEnsure(string objectName)
@@ -54,6 +77,7 @@ public static class EliteActorSetup
         AnimationClip idle = FindClip(clips, "idle", "stand");
         AnimationClip move = FindClip(clips, "walk", "run", "move");
         AnimationClip attack = FindClip(clips, "attack", "slash", "melee");
+        AnimationClip hit = FindClip(clips, "hit", "hurt", "react");
         AnimationClip death = FindClip(clips, "death", "die");
         if (idle == null)
             idle = clips[0];
@@ -67,6 +91,8 @@ public static class EliteActorSetup
             actions.Add(new CharacterActionDefinition("Move", move, true));
         if (attack != null)
             actions.Add(new CharacterActionDefinition("Attack", attack, false, 1f, 0.08f, 0.38f));
+        if (hit != null)
+            actions.Add(new CharacterActionDefinition("Hit", hit, false));
         if (death != null)
             actions.Add(new CharacterActionDefinition("Death", death, false));
         profile.Configure("Idle", actions);

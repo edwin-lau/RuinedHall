@@ -14,14 +14,19 @@ public class GameHud : MonoBehaviour
     [SerializeField] MobileActionButton jumpButton;
     [SerializeField] Image healthFill;
     [SerializeField] Text healthText;
+    [SerializeField] Image runStaminaFill;
     [SerializeField] Image portrait;
     [SerializeField] Text goldText;
     [SerializeField] Text eliteText;
-    [SerializeField] Text staminaText;
+    [SerializeField] Text reviveStaminaText;
+    [SerializeField] Image eliteIcon;
+    [SerializeField] Image goldIcon;
+    [SerializeField] Image reviveStaminaIcon;
     [SerializeField] GameObject revivePanel;
     [SerializeField] Text reviveMessage;
     [SerializeField] Button reviveConfirm;
     [SerializeField] Button reviveCancel;
+    [SerializeField] Button addStaminaButton;
 
     public VirtualJoystick Joystick => joystick;
     public MobileActionButton PunchButton => punchButton;
@@ -54,6 +59,7 @@ public class GameHud : MonoBehaviour
         if (_hero != null)
         {
             _hero.HealthChanged -= OnHeroHealth;
+            _hero.RunStaminaChanged -= OnHeroRunStamina;
             _hero.Died -= OnHeroDied;
         }
 
@@ -62,10 +68,14 @@ public class GameHud : MonoBehaviour
             return;
 
         _hero.HealthChanged += OnHeroHealth;
+        _hero.RunStaminaChanged += OnHeroRunStamina;
         _hero.Died += OnHeroDied;
         SetHealth(_hero.CurrentHealth, _hero.MaxHealth);
+        EnsureRunStaminaBar();
+        SetRunStamina(_hero.RunStamina);
         EnsureProgressHud();
         EnsureReviveDialog();
+        EnsureAddStaminaButton();
         RefreshProgress();
         if (_hero.IsDead)
             ShowReviveDialog();
@@ -77,6 +87,7 @@ public class GameHud : MonoBehaviour
     {
         PlayerProgress.Changed += RefreshProgress;
         EnsureProgressHud();
+        EnsureAddStaminaButton();
         RefreshProgress();
     }
 
@@ -90,6 +101,7 @@ public class GameHud : MonoBehaviour
         if (_hero != null)
         {
             _hero.HealthChanged -= OnHeroHealth;
+            _hero.RunStaminaChanged -= OnHeroRunStamina;
             _hero.Died -= OnHeroDied;
         }
 
@@ -103,6 +115,7 @@ public class GameHud : MonoBehaviour
         BuildHeroStatus(circle);
         EnsureProgressHud();
         EnsureReviveDialog();
+        EnsureAddStaminaButton();
         joystick = BuildJoystick(circle);
         punchButton = BuildActionButton(
             "PunchButton",
@@ -127,7 +140,7 @@ public class GameHud : MonoBehaviour
         rootRt.anchorMin = new Vector2(0f, 1f);
         rootRt.anchorMax = new Vector2(0f, 1f);
         rootRt.pivot = new Vector2(0f, 1f);
-        rootRt.sizeDelta = new Vector2(560f, 132f);
+        rootRt.sizeDelta = new Vector2(560f, 148f);
         rootRt.anchoredPosition = new Vector2(36f, -28f);
 
         var frameGo = CreateUiObject("AvatarFrame", rootRt);
@@ -170,7 +183,7 @@ public class GameHud : MonoBehaviour
         infoRt.anchorMin = new Vector2(0f, 0.5f);
         infoRt.anchorMax = new Vector2(0f, 0.5f);
         infoRt.pivot = new Vector2(0f, 0.5f);
-        infoRt.sizeDelta = new Vector2(400f, 92f);
+        infoRt.sizeDelta = new Vector2(400f, 108f);
         infoRt.anchoredPosition = new Vector2(128f, 0f);
 
         var nameGo = CreateUiObject("Name", infoRt);
@@ -221,11 +234,74 @@ public class GameHud : MonoBehaviour
         healthText.fontSize = 18;
         healthText.raycastTarget = false;
         healthText.font = ResolveUiFont(18);
+
+        var staminaBgGo = CreateUiObject("RunStaminaBar", infoRt);
+        var staminaBgRt = staminaBgGo.GetComponent<RectTransform>();
+        staminaBgRt.anchorMin = new Vector2(0f, 0f);
+        staminaBgRt.anchorMax = new Vector2(1f, 0f);
+        staminaBgRt.pivot = new Vector2(0f, 0f);
+        staminaBgRt.sizeDelta = new Vector2(0f, 12f);
+        staminaBgRt.anchoredPosition = new Vector2(0f, -8f);
+        var staminaBg = staminaBgGo.AddComponent<Image>();
+        staminaBg.sprite = LoadWhiteSprite();
+        staminaBg.color = new Color(0.18f, 0.18f, 0.18f, 0.72f);
+        staminaBg.raycastTarget = false;
+
+        var staminaFillGo = CreateUiObject("Fill", staminaBgRt);
+        Stretch(staminaFillGo.GetComponent<RectTransform>());
+        staminaFillGo.GetComponent<RectTransform>().offsetMin = new Vector2(2f, 2f);
+        staminaFillGo.GetComponent<RectTransform>().offsetMax = new Vector2(-2f, -2f);
+        runStaminaFill = staminaFillGo.AddComponent<Image>();
+        runStaminaFill.sprite = LoadWhiteSprite();
+        runStaminaFill.type = Image.Type.Filled;
+        runStaminaFill.fillMethod = Image.FillMethod.Horizontal;
+        runStaminaFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+        runStaminaFill.color = new Color(0.72f, 0.72f, 0.72f, 0.95f);
+        runStaminaFill.raycastTarget = false;
+        runStaminaFill.fillAmount = 1f;
+    }
+
+    void EnsureRunStaminaBar()
+    {
+        if (runStaminaFill != null)
+            return;
+
+        Transform info = transform.Find("HeroStatus/Info");
+        if (info == null)
+            return;
+
+        var infoRt = info.GetComponent<RectTransform>();
+        infoRt.sizeDelta = new Vector2(400f, 108f);
+
+        var staminaBgGo = CreateUiObject("RunStaminaBar", infoRt);
+        var staminaBgRt = staminaBgGo.GetComponent<RectTransform>();
+        staminaBgRt.anchorMin = new Vector2(0f, 0f);
+        staminaBgRt.anchorMax = new Vector2(1f, 0f);
+        staminaBgRt.pivot = new Vector2(0f, 0f);
+        staminaBgRt.sizeDelta = new Vector2(0f, 12f);
+        staminaBgRt.anchoredPosition = new Vector2(0f, -8f);
+        var staminaBg = staminaBgGo.AddComponent<Image>();
+        staminaBg.sprite = LoadWhiteSprite();
+        staminaBg.color = new Color(0.18f, 0.18f, 0.18f, 0.72f);
+        staminaBg.raycastTarget = false;
+
+        var staminaFillGo = CreateUiObject("Fill", staminaBgRt);
+        Stretch(staminaFillGo.GetComponent<RectTransform>());
+        staminaFillGo.GetComponent<RectTransform>().offsetMin = new Vector2(2f, 2f);
+        staminaFillGo.GetComponent<RectTransform>().offsetMax = new Vector2(-2f, -2f);
+        runStaminaFill = staminaFillGo.AddComponent<Image>();
+        runStaminaFill.sprite = LoadWhiteSprite();
+        runStaminaFill.type = Image.Type.Filled;
+        runStaminaFill.fillMethod = Image.FillMethod.Horizontal;
+        runStaminaFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+        runStaminaFill.color = new Color(0.72f, 0.72f, 0.72f, 0.95f);
+        runStaminaFill.raycastTarget = false;
+        runStaminaFill.fillAmount = 1f;
     }
 
     void EnsureProgressHud()
     {
-        if (goldText != null && eliteText != null && staminaText != null)
+        if (goldText != null && eliteText != null && reviveStaminaText != null)
             return;
 
         RectTransform rootRt = null;
@@ -241,13 +317,105 @@ public class GameHud : MonoBehaviour
             rootRt.anchoredPosition = new Vector2(-36f, -28f);
         }
 
-        rootRt.sizeDelta = new Vector2(360f, 156f);
+        rootRt.sizeDelta = new Vector2(280f, 168f);
         if (eliteText == null)
-            eliteText = CreateProgressLabel(rootRt, "EliteKills", new Vector2(0f, -8f), "精英 0");
+            CreateProgressRow(rootRt, "EliteKills", new Vector2(0f, -8f), UiSprites.EliteSkull(), out eliteIcon, out eliteText);
         if (goldText == null)
-            goldText = CreateProgressLabel(rootRt, "Gold", new Vector2(0f, -56f), "金币 0");
-        if (staminaText == null)
-            staminaText = CreateProgressLabel(rootRt, "Stamina", new Vector2(0f, -104f), "体力 0");
+            CreateProgressRow(rootRt, "Gold", new Vector2(0f, -60f), UiSprites.Coin(), out goldIcon, out goldText);
+        if (reviveStaminaText == null)
+            CreateProgressRow(rootRt, "ReviveStamina", new Vector2(0f, -112f), UiSprites.Heart(), out reviveStaminaIcon, out reviveStaminaText);
+        EnsureAddStaminaButton();
+    }
+
+    void EnsureAddStaminaButton()
+    {
+        if (addStaminaButton != null)
+        {
+            addStaminaButton.interactable = true;
+            addStaminaButton.transform.SetAsLastSibling();
+            return;
+        }
+
+        var go = CreateUiObject("AddStaminaButton", transform);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(1f, 1f);
+        rt.anchorMax = new Vector2(1f, 1f);
+        rt.pivot = new Vector2(1f, 1f);
+        rt.sizeDelta = new Vector2(160f, 64f);
+        rt.anchoredPosition = new Vector2(-36f, -208f);
+        var image = go.AddComponent<Image>();
+        image.sprite = LoadWhiteSprite();
+        image.color = new Color(0.22f, 0.56f, 0.34f, 0.96f);
+        image.raycastTarget = true;
+        addStaminaButton = go.AddComponent<Button>();
+        addStaminaButton.targetGraphic = image;
+        addStaminaButton.interactable = true;
+        addStaminaButton.onClick.AddListener(OnAddStamina);
+
+        var labelGo = CreateUiObject("Label", rt);
+        Stretch(labelGo.GetComponent<RectTransform>());
+        var label = labelGo.AddComponent<Text>();
+        label.text = "+体力";
+        label.alignment = TextAnchor.MiddleCenter;
+        label.color = Color.white;
+        label.fontSize = 28;
+        label.raycastTarget = false;
+        label.font = ResolveUiFont(28);
+        addStaminaButton.transform.SetAsLastSibling();
+    }
+
+    void OnAddStamina()
+    {
+        PlayerProgress.Instance.AddStamina(1);
+    }
+
+    void LateUpdate()
+    {
+        if (addStaminaButton != null)
+            addStaminaButton.transform.SetAsLastSibling();
+    }
+
+    void CreateProgressRow(
+        RectTransform parent,
+        string objectName,
+        Vector2 anchored,
+        Sprite iconSprite,
+        out Image icon,
+        out Text valueText)
+    {
+        var row = CreateUiObject(objectName, parent);
+        var rowRt = row.GetComponent<RectTransform>();
+        rowRt.anchorMin = new Vector2(0f, 1f);
+        rowRt.anchorMax = new Vector2(1f, 1f);
+        rowRt.pivot = new Vector2(1f, 1f);
+        rowRt.sizeDelta = new Vector2(0f, 44f);
+        rowRt.anchoredPosition = anchored;
+
+        var iconGo = CreateUiObject("Icon", rowRt);
+        var iconRt = iconGo.GetComponent<RectTransform>();
+        iconRt.anchorMin = new Vector2(1f, 0.5f);
+        iconRt.anchorMax = new Vector2(1f, 0.5f);
+        iconRt.pivot = new Vector2(1f, 0.5f);
+        iconRt.sizeDelta = new Vector2(36f, 36f);
+        iconRt.anchoredPosition = new Vector2(0f, 0f);
+        icon = iconGo.AddComponent<Image>();
+        icon.sprite = iconSprite;
+        icon.preserveAspect = true;
+        icon.raycastTarget = false;
+
+        var valueGo = CreateUiObject("Value", rowRt);
+        var valueRt = valueGo.GetComponent<RectTransform>();
+        valueRt.anchorMin = new Vector2(0f, 0f);
+        valueRt.anchorMax = new Vector2(1f, 1f);
+        valueRt.offsetMin = Vector2.zero;
+        valueRt.offsetMax = new Vector2(-44f, 0f);
+        valueText = valueGo.AddComponent<Text>();
+        valueText.text = "0";
+        valueText.alignment = TextAnchor.MiddleRight;
+        valueText.color = Color.white;
+        valueText.fontSize = 30;
+        valueText.raycastTarget = false;
+        valueText.font = ResolveUiFont(30);
     }
 
     Text CreateProgressLabel(RectTransform parent, string objectName, Vector2 anchored, string value)
@@ -274,11 +442,11 @@ public class GameHud : MonoBehaviour
         EnsureProgressHud();
         var progress = PlayerProgress.Instance;
         if (eliteText != null)
-            eliteText.text = "精英 " + progress.EliteKills;
+            eliteText.text = progress.EliteKills.ToString();
         if (goldText != null)
-            goldText.text = "金币 " + progress.Gold;
-        if (staminaText != null)
-            staminaText.text = "体力 " + progress.Stamina;
+            goldText.text = progress.Gold.ToString();
+        if (reviveStaminaText != null)
+            reviveStaminaText.text = progress.Stamina.ToString();
         RefreshReviveMessage();
     }
 
@@ -407,6 +575,17 @@ public class GameHud : MonoBehaviour
     void OnHeroHealth(int current, int max)
     {
         SetHealth(current, max);
+    }
+
+    void OnHeroRunStamina(float amount)
+    {
+        SetRunStamina(amount);
+    }
+
+    void SetRunStamina(float amount)
+    {
+        if (runStaminaFill != null)
+            runStaminaFill.fillAmount = Mathf.Clamp01(amount);
     }
 
     void SetHealth(int current, int max)
@@ -610,5 +789,63 @@ static class UiSprites
 
         texture.Apply(false, false);
         return Sprite.Create(texture, new Rect(0f, 0f, 4, 4), new Vector2(0.5f, 0.5f), 4f);
+    }
+
+    public static Sprite Coin()
+    {
+        return RasterIcon(64, (x, y, center, radius) =>
+        {
+            float dist = Vector2.Distance(new Vector2(x, y), center);
+            if (dist > radius)
+                return Color.clear;
+            Color edge = new Color(0.86f, 0.62f, 0.12f, 1f);
+            Color core = new Color(1f, 0.86f, 0.28f, 1f);
+            return Color.Lerp(core, edge, Mathf.Clamp01((dist - radius * 0.55f) / (radius * 0.45f)));
+        });
+    }
+
+    public static Sprite EliteSkull()
+    {
+        return RasterIcon(64, (x, y, center, radius) =>
+        {
+            Vector2 p = new Vector2(x, y) - center;
+            float head = Vector2.Distance(p, new Vector2(0f, 4f)) / (radius * 0.72f);
+            float jaw = Vector2.Distance(p, new Vector2(0f, -10f)) / (radius * 0.42f);
+            bool shape = head <= 1f || jaw <= 1f;
+            if (!shape)
+                return Color.clear;
+            bool eye = Vector2.Distance(p, new Vector2(-8f, 6f)) < 4.5f ||
+                       Vector2.Distance(p, new Vector2(8f, 6f)) < 4.5f;
+            return eye ? new Color(0.12f, 0.12f, 0.12f, 1f) : new Color(0.92f, 0.78f, 0.2f, 1f);
+        });
+    }
+
+    public static Sprite Heart()
+    {
+        return RasterIcon(64, (x, y, center, radius) =>
+        {
+            Vector2 p = (new Vector2(x, y) - center) / radius;
+            float a = p.x * p.x + (p.y - 0.18f) * (p.y - 0.18f) - 0.22f;
+            float b = p.x * p.x + (p.y + 0.28f) * (p.y + 0.28f) - 0.55f;
+            bool shape = a * a * a - p.x * p.x * (p.y - 0.18f) * (p.y - 0.18f) * (p.y - 0.18f) <= 0f ||
+                         b <= 0f;
+            return shape ? new Color(0.92f, 0.24f, 0.28f, 1f) : Color.clear;
+        });
+    }
+
+    static Sprite RasterIcon(int size, System.Func<int, int, Vector2, float, Color> sample)
+    {
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        texture.wrapMode = TextureWrapMode.Clamp;
+        Vector2 center = new Vector2((size - 1) * 0.5f, (size - 1) * 0.5f);
+        float radius = center.x - 2f;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+                texture.SetPixel(x, y, sample(x, y, center, radius));
+        }
+
+        texture.Apply(false, false);
+        return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
     }
 }

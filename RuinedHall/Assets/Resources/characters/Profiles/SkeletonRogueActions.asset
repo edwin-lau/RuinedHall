@@ -1,0 +1,72 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8497b73989b6848b486174637dd4af49, type: 3}
+  m_Name: SkeletonRogueActions
+  m_EditorClassIdentifier: Assembly-CSharp::CharacterActionProfile
+  defaultAction: Idle
+  actions:
+  - id: Idle
+    clip: {fileID: -5624545281902316504, guid: d57678d709bb643c8b18fc6f09d8d4ee, type: 3}
+    loop: 1
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Idle2
+    clip: {fileID: 345275505875579249, guid: d57678d709bb643c8b18fc6f09d8d4ee, type: 3}
+    loop: 1
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Move
+    clip: {fileID: 3543698089625107784, guid: 9789f424e77cd44b49a0ccca89e9722a, type: 3}
+    loop: 1
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Hit
+    clip: {fileID: 2825485217256495706, guid: d57678d709bb643c8b18fc6f09d8d4ee, type: 3}
+    loop: 0
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Death
+    clip: {fileID: -1923750366902163184, guid: d57678d709bb643c8b18fc6f09d8d4ee, type: 3}
+    loop: 0
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Spawn
+    clip: {fileID: 6802492928670190411, guid: d57678d709bb643c8b18fc6f09d8d4ee, type: 3}
+    loop: 0
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Throw
+    clip: {fileID: -6185155371445809522, guid: d57678d709bb643c8b18fc6f09d8d4ee, type: 3}
+    loop: 0
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []
+  - id: Attack
+    clip: {fileID: -6185155371445809522, guid: d57678d709bb643c8b18fc6f09d8d4ee, type: 3}
+    loop: 0
+    speed: 1
+    crossFade: 0.12
+    impactTime: 0.4
+    effects: []

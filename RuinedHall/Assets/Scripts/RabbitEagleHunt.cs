@@ -10,6 +10,8 @@ public sealed class RabbitEagleHunt : MonoBehaviour
     [SerializeField] float followHeight = 2.8f;
     [SerializeField] float followDistance = 1.6f;
     [SerializeField] float followSpeed = 18f;
+    [SerializeField] float stuckCheckInterval = 0.75f;
+    [SerializeField] float stuckSpeedRatio = 0.58f;
 
     CharacterActionPlayer _rabbitActions;
     CharacterController _rabbitController;
@@ -24,6 +26,8 @@ public sealed class RabbitEagleHunt : MonoBehaviour
     float _carryUntil;
     float _waterLockUntil;
     float _wingAngle;
+    float _stuckSampleTime;
+    Vector3 _stuckSamplePos;
     Phase _phase;
 
     enum Phase
@@ -116,6 +120,8 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         _phase = Phase.Flee;
         _huntEndTime = Time.time + grabDelay;
         _nextFleeRepath = 0f;
+        _stuckSampleTime = Time.time;
+        _stuckSamplePos = transform.position;
         ChooseFleePoint(false);
         PlayRabbit("Move", true);
         PlayEagle("Fly", true);
@@ -155,12 +161,35 @@ public sealed class RabbitEagleHunt : MonoBehaviour
             Face(direction);
             if (!ApplyRabbitMove(direction * fleeSpeed, false))
                 BounceOffWater(direction);
+            else
+                CheckStuck(direction, fleeSpeed);
             PlayRabbit("Move");
         }
         else
         {
             ApplyRabbitMove(Vector3.zero, false);
         }
+    }
+
+    void CheckStuck(Vector3 intendedDirection, float speed)
+    {
+        if (Time.time < _stuckSampleTime + stuckCheckInterval)
+            return;
+
+        float elapsed = Time.time - _stuckSampleTime;
+        float actual = Vector3.Distance(transform.position, _stuckSamplePos);
+        float expected = speed * elapsed;
+        _stuckSampleTime = Time.time;
+        _stuckSamplePos = transform.position;
+
+        if (expected < 0.5f || actual >= expected * stuckSpeedRatio)
+            return;
+
+        Vector3 side = Vector3.Cross(Vector3.up, intendedDirection).normalized;
+        if (side.sqrMagnitude < 0.01f)
+            side = transform.right;
+        _escapeDir = UnityEngine.Random.value > 0.5f ? side : -side;
+        ChooseFleePoint(true);
     }
 
     void BounceOffWater(Vector3 incoming)

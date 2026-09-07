@@ -2,7 +2,7 @@ using UnityEngine;
 
 public sealed class SkeletonArrow : MonoBehaviour
 {
-    const float VisualScale = 4.5f;
+    const float VisualScale = 13.5f;
 
     CharacterCombatAgent _owner;
     Vector3 _direction;
@@ -13,6 +13,34 @@ public sealed class SkeletonArrow : MonoBehaviour
     float _flightY;
     int _damage;
     bool _stuck;
+    bool _launchedFromHand;
+
+    public static SkeletonArrow LaunchFromHand(
+        Transform handArrow,
+        Vector3 direction,
+        CharacterCombatAgent owner,
+        int damage,
+        float range,
+        float speed,
+        float stickDuration)
+    {
+        if (handArrow == null)
+            return null;
+
+        direction.y = 0f;
+        if (direction.sqrMagnitude < 0.0001f)
+            direction = handArrow.forward;
+        direction.Normalize();
+
+        handArrow.SetParent(null, true);
+        handArrow.rotation = Quaternion.LookRotation(direction, Vector3.up);
+
+        var arrow = handArrow.GetComponent<SkeletonArrow>();
+        if (arrow == null)
+            arrow = handArrow.gameObject.AddComponent<SkeletonArrow>();
+        arrow.Init(owner, direction, damage, range, speed, stickDuration, handArrow.position.y, true);
+        return arrow;
+    }
 
     public static void Launch(
         GameObject prefab,
@@ -39,7 +67,7 @@ public sealed class SkeletonArrow : MonoBehaviour
         visual.transform.localScale = Vector3.one * VisualScale;
 
         var arrow = root.AddComponent<SkeletonArrow>();
-        arrow.Init(owner, direction, damage, range, speed, stickDuration);
+        arrow.Init(owner, direction, damage, range, speed, stickDuration, origin.y, false);
     }
 
     void Init(
@@ -48,7 +76,9 @@ public sealed class SkeletonArrow : MonoBehaviour
         int damage,
         float range,
         float speed,
-        float stickDuration)
+        float stickDuration,
+        float flightY,
+        bool launchedFromHand)
     {
         _owner = owner;
         _direction = new Vector3(direction.x, 0f, direction.z).normalized;
@@ -56,13 +86,22 @@ public sealed class SkeletonArrow : MonoBehaviour
         _range = Mathf.Max(2f, range);
         _speed = Mathf.Max(4f, speed);
         _stickUntil = stickDuration;
-        _flightY = transform.position.y;
+        _flightY = flightY;
+        _launchedFromHand = launchedFromHand;
         transform.rotation = Quaternion.LookRotation(_direction, Vector3.up);
 
-        var box = gameObject.AddComponent<BoxCollider>();
+        var box = GetComponent<BoxCollider>();
+        if (box == null)
+            box = gameObject.AddComponent<BoxCollider>();
         box.isTrigger = true;
-        box.size = new Vector3(0.22f, 0.22f, 1.6f);
-        box.center = new Vector3(0f, 0f, 0.35f);
+        box.size = new Vector3(0.66f, 0.66f, 4.8f);
+        box.center = new Vector3(0f, 0f, 1.05f);
+    }
+
+    void OnDestroy()
+    {
+        if (_launchedFromHand && _owner != null && !_owner.IsDead)
+            _owner.RestoreHandArrow();
     }
 
     void Update()
@@ -79,7 +118,7 @@ public sealed class SkeletonArrow : MonoBehaviour
         next.y = _flightY;
         if (Physics.SphereCast(
                 transform.position,
-                0.18f,
+                0.54f,
                 _direction,
                 out RaycastHit hit,
                 step + 0.2f,

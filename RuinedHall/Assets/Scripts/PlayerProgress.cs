@@ -68,6 +68,13 @@ public sealed class PlayerProgress : MonoBehaviour
         Changed?.Invoke();
     }
 
+    public void AddStamina(int amount)
+    {
+        _stamina += Mathf.Max(1, amount);
+        Save();
+        Changed?.Invoke();
+    }
+
     public bool TryConsumeStamina(int amount)
     {
         amount = Mathf.Max(1, amount);

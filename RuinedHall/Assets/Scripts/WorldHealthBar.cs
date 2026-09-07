@@ -15,6 +15,7 @@ public sealed class WorldHealthBar : MonoBehaviour
     CharacterController _controller;
     Image _fill;
     Text _title;
+    Text _amount;
     CanvasGroup _group;
     Canvas _canvas;
     Transform _cameraTransform;
@@ -182,6 +183,20 @@ public sealed class WorldHealthBar : MonoBehaviour
             28);
         if (_title.font == null)
             _title.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+        var amountGo = new GameObject("Amount", typeof(RectTransform), typeof(Text));
+        amountGo.transform.SetParent(transform, false);
+        var amountRt = amountGo.GetComponent<RectTransform>();
+        amountRt.anchorMin = new Vector2(0f, 0f);
+        amountRt.anchorMax = new Vector2(1f, 1f);
+        amountRt.offsetMin = Vector2.zero;
+        amountRt.offsetMax = Vector2.zero;
+        _amount = amountGo.GetComponent<Text>();
+        _amount.alignment = TextAnchor.MiddleCenter;
+        _amount.color = Color.white;
+        _amount.fontSize = 22;
+        _amount.raycastTarget = false;
+        _amount.font = _title.font;
         ApplyTitle();
     }
 
@@ -190,10 +205,11 @@ public sealed class WorldHealthBar : MonoBehaviour
         if (_title == null)
             return;
 
-        bool show = _owner != null && _owner.IsElite && !string.IsNullOrWhiteSpace(_owner.EliteTitle);
+        bool show = _owner != null &&
+            ((_owner.IsElite && !string.IsNullOrWhiteSpace(_owner.EliteTitle)) || _owner.IsTrainingDummy);
         _title.enabled = show;
         if (show)
-            _title.text = _owner.EliteTitle;
+            _title.text = string.IsNullOrWhiteSpace(_owner.EliteTitle) ? "肉桩" : _owner.EliteTitle;
     }
 
     void OnHealthChanged(int current, int max)
@@ -206,6 +222,13 @@ public sealed class WorldHealthBar : MonoBehaviour
         max = Mathf.Max(1, max);
         if (_fill != null)
             _fill.fillAmount = Mathf.Clamp01(current / (float)max);
+        if (_amount != null)
+        {
+            bool showAmount = _owner != null && _owner.IsTrainingDummy;
+            _amount.enabled = showAmount;
+            if (showAmount)
+                _amount.text = current + " / " + max;
+        }
     }
 
     void AlignToHead()

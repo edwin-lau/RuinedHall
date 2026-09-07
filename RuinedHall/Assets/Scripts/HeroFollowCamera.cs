@@ -3,44 +3,47 @@ using UnityEngine;
 public class HeroFollowCamera : MonoBehaviour
 {
     [SerializeField] Transform target;
-    [SerializeField] Vector3 offset;
-    [SerializeField] float lookAtHeight = 1.1f;
-    [SerializeField] float followSmoothing = 12f;
+    [SerializeField] float followSmoothing = 14f;
 
-    public void SetTarget(Transform followTarget)
+    Quaternion _lockedRotation;
+    Vector3 _offset;
+    bool _hasView;
+    bool _snapNow;
+
+    public void Bind(Transform followTarget, Vector3 worldOffset, Quaternion worldRotation)
     {
         target = followTarget;
-        CaptureOffsetFromCurrentView();
-    }
-
-    void Start()
-    {
-        if (target != null && offset.sqrMagnitude < 0.01f)
-            CaptureOffsetFromCurrentView();
+        _offset = worldOffset;
+        _lockedRotation = worldRotation;
+        _hasView = target != null;
+        _snapNow = true;
+        Apply(1f);
     }
 
     void LateUpdate()
     {
-        if (target == null)
+        if (target == null || !_hasView)
             return;
 
-        Vector3 desired = target.position + offset;
-        float t = followSmoothing <= 0f
+        float speed = 0f;
+        var hero = target.GetComponent<HeroController>();
+        if (hero != null)
+            speed = hero.PlanarSpeed;
+
+        // When the hero brakes, catch up immediately so the character does not slide backward in frame.
+        float t = _snapNow || followSmoothing <= 0f || speed <= 0.35f
             ? 1f
             : 1f - Mathf.Exp(-followSmoothing * Time.deltaTime);
-        transform.position = Vector3.Lerp(transform.position, desired, t);
-        transform.LookAt(target.position + Vector3.up * lookAtHeight);
+        _snapNow = false;
+        Apply(t);
     }
 
-    void CaptureOffsetFromCurrentView()
+    void Apply(float t)
     {
-        if (target == null)
-            return;
-
-        offset = transform.position - target.position;
-        if (offset.y < 6f)
-            offset.y = 14.7f;
-        if (offset.sqrMagnitude < 4f)
-            offset = new Vector3(0f, 14.7f, -12.8f);
+        Vector3 desired = target.position + _offset;
+        transform.position = t >= 1f
+            ? desired
+            : Vector3.Lerp(transform.position, desired, t);
+        transform.rotation = _lockedRotation;
     }
 }

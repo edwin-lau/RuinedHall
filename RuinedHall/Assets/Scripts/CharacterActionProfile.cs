@@ -75,7 +75,7 @@ public sealed class CharacterActionDefinition
     public float CrossFade => Mathf.Max(0f, crossFade);
     public float ImpactTime => Mathf.Max(0f, impactTime);
     public IReadOnlyList<CharacterEffectCue> Effects => effects;
-    public float Duration => clip == null ? 0f : clip.length / Speed;
+    public float Duration => AnimPlayback.Length(clip, Speed);
 
     public CharacterActionDefinition(
         string id,

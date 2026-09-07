@@ -37,9 +37,28 @@ public sealed class CharacterActionPlayer : MonoBehaviour
     public string CurrentActionId => _currentAction?.Id;
     public bool IsPaused => _paused;
     public float ActionElapsed => _actionElapsed;
-    public float NormalizedTime => _currentAction == null || _currentAction.Duration <= 0f
-        ? 0f
-        : _actionElapsed / _currentAction.Duration;
+    public float PlaybackLength => AnimPlayback.Length(_currentAction, playbackSpeed);
+    public float NormalizedTime
+    {
+        get
+        {
+            if (!_hasCurrentPlayable || _currentAction?.Clip == null || _currentAction.Clip.length <= 0f)
+                return 0f;
+            return (float)(_currentPlayable.GetTime() / _currentAction.Clip.length);
+        }
+    }
+
+    public bool PlaybackFinished
+    {
+        get
+        {
+            if (!_hasCurrentPlayable || _currentAction == null)
+                return true;
+            if (_currentAction.Loop)
+                return false;
+            return NormalizedTime >= 1f;
+        }
+    }
 
     void Awake()
     {
@@ -135,7 +154,11 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         _currentAction = action;
         _actionElapsed = 0f;
         _completed = false;
-        _firedCues = new bool[action.Effects.Count];
+        int cueCount = action.Effects.Count;
+        if (_firedCues.Length != cueCount)
+            _firedCues = cueCount > 0 ? new bool[cueCount] : Array.Empty<bool>();
+        else if (cueCount > 0)
+            Array.Clear(_firedCues, 0, cueCount);
 
         _fadeDuration = _previousInput < 0 ? 0f : action.CrossFade;
         _fadeElapsed = 0f;
@@ -247,12 +270,8 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         }
 
         FireDueCues();
-        if (_currentAction.Loop ||
-            _completed ||
-            _actionElapsed < _currentAction.Duration)
-        {
+        if (_currentAction.Loop || _completed || NormalizedTime < 1f)
             return;
-        }
 
         _completed = true;
         ActionCompleted?.Invoke(_currentAction.Id);
@@ -269,7 +288,10 @@ public sealed class CharacterActionPlayer : MonoBehaviour
                 continue;
 
             CharacterEffectCue cue = _currentAction.Effects[i];
-            if (cue == null || _actionElapsed < cue.TriggerTime)
+            if (cue == null)
+                continue;
+            double clipTime = _hasCurrentPlayable ? _currentPlayable.GetTime() : _actionElapsed;
+            if (clipTime < cue.TriggerTime)
                 continue;
 
             _firedCues[i] = true;

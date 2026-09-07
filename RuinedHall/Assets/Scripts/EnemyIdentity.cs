@@ -8,6 +8,12 @@ public static class EnemyIdentity
             return;
 
         string name = agent.gameObject.name;
+        if (Matches(name, "thor"))
+        {
+            agent.ApplyTrainingDummy("肉桩");
+            return;
+        }
+
         if (Matches(name, "rooster", "chicken"))
         {
             agent.ApplyRewards(false, "", 2);
@@ -48,7 +54,7 @@ public static class EnemyIdentity
             agent.ApplyRangedThrow(
                 "characters/Skeleton/assets/fbx/Skeleton_Arrow",
                 18f,
-                24f);
+                18f);
             return;
         }
 

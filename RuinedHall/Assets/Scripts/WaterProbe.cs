@@ -6,7 +6,7 @@ public static class WaterProbe
     static readonly List<Transform> Bodies = new();
     static float _seaLevel;
     static bool _hasSeaLevel;
-    static float _nextRefresh;
+    static bool _initialized;
 
     public static float SeaLevel => _hasSeaLevel ? _seaLevel : 0f;
 
@@ -99,10 +99,10 @@ public static class WaterProbe
 
     static void RefreshIfNeeded()
     {
-        if (Time.unscaledTime < _nextRefresh && (Bodies.Count > 0 || _hasSeaLevel))
+        if (_initialized)
             return;
 
-        _nextRefresh = Time.unscaledTime + 2.5f;
+        _initialized = true;
         Bodies.Clear();
         _hasSeaLevel = false;
         foreach (var behaviour in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Exclude))
