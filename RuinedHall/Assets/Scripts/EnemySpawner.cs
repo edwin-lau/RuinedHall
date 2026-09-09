@@ -2,6 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 按场景标记点生成公鸡营地，并按与英雄的距离做性能 LOD。
+/// </summary>
 public sealed class EnemySpawner : MonoBehaviour
 {
     [SerializeField] GameObject template;
@@ -18,6 +21,7 @@ public sealed class EnemySpawner : MonoBehaviour
     [SerializeField] float nearTierRadius = 25f;
     [SerializeField] float midTierRadius = 50f;
 
+    /// <summary>单个营地：中心、容量、唤醒状态与已生成敌人。</summary>
     sealed class Camp
     {
         public Vector3 Center;
@@ -29,12 +33,14 @@ public sealed class EnemySpawner : MonoBehaviour
 
     readonly List<Camp> _camps = new();
 
+    /// <summary>绑定公鸡模板与英雄 Transform。</summary>
     public void Initialize(GameObject roosterTemplate, Transform heroTransform)
     {
         template = roosterTemplate;
         hero = heroTransform;
     }
 
+    /// <summary>立即唤醒指定营地，使其进入近距离 AI。</summary>
     public void WakeCamp(int campIndex)
     {
         if (campIndex < 0 || campIndex >= _camps.Count)
@@ -43,6 +49,7 @@ public sealed class EnemySpawner : MonoBehaviour
         _camps[campIndex].Active = true;
     }
 
+    // 收集刷新点、建营地并一次生成全部公鸡。
     void Start()
     {
         var markers = CollectRoosterMarkers();
@@ -61,6 +68,7 @@ public sealed class EnemySpawner : MonoBehaviour
                 hero = heroController.transform;
         }
 
+        // 每个标记点落成一个营地，标记物本身关掉以免重复当敌人。
         for (int i = 0; i < markers.Count; i++)
         {
             GameObject marker = markers[i];
@@ -75,6 +83,7 @@ public sealed class EnemySpawner : MonoBehaviour
             marker.SetActive(false);
         }
 
+        // 按容量在每个营地生成公鸡。
         for (int campIndex = 0; campIndex < _camps.Count; campIndex++)
         {
             Camp camp = _camps[campIndex];
@@ -85,11 +94,13 @@ public sealed class EnemySpawner : MonoBehaviour
         UpdatePerformanceLod();
     }
 
+    // 每帧按英雄距离刷新营地 LOD。
     void Update()
     {
         UpdatePerformanceLod();
     }
 
+    // 按唤醒/休眠半径切换营地，再给每个敌人设 LOD 档。
     void UpdatePerformanceLod()
     {
         if (hero == null)
@@ -109,6 +120,7 @@ public sealed class EnemySpawner : MonoBehaviour
         }
     }
 
+    // 休眠营地点名休眠；唤醒营地再按距离分近/中/远档。
     void ApplyCampPerformance(Camp camp, Vector3 heroPos)
     {
         for (int i = 0; i < camp.Spawned.Count; i++)
@@ -134,6 +146,7 @@ public sealed class EnemySpawner : MonoBehaviour
         }
     }
 
+    // 在场景里找名字含 rooster 的标记点作为营地中心。
     static List<GameObject> CollectRoosterMarkers()
     {
         var markers = new List<GameObject>();
@@ -156,6 +169,7 @@ public sealed class EnemySpawner : MonoBehaviour
         return markers;
     }
 
+    // 在营地内采样落点并实例化一只公鸡；失败则稍后重试。
     void SpawnAtCamp(Camp camp, int campIndex)
     {
         if (template == null || AliveIn(camp) + camp.Pending >= camp.Capacity)
@@ -183,6 +197,7 @@ public sealed class EnemySpawner : MonoBehaviour
         agent.BindPerformanceCamp(this, campIndex, camp.Spawned.Count - 1);
     }
 
+    // 短暂等待后再次尝试在该营地生成。
     IEnumerator RetrySpawn(Camp camp, int campIndex)
     {
         yield return new WaitForSeconds(1.2f);
@@ -190,6 +205,7 @@ public sealed class EnemySpawner : MonoBehaviour
         SpawnAtCamp(camp, campIndex);
     }
 
+    // 统计营地中仍存活的敌人数量。
     static int AliveIn(Camp camp)
     {
         int count = 0;
@@ -202,6 +218,7 @@ public sealed class EnemySpawner : MonoBehaviour
         return count;
     }
 
+    // 在营地半径内采样合法地面点，避开水和过近邻居。
     bool TryFindPoint(Camp camp, out Vector3 point)
     {
         for (int i = 0; i < sampleAttempts; i++)
@@ -223,6 +240,7 @@ public sealed class EnemySpawner : MonoBehaviour
         return !WaterProbe.IsInWater(point) && !IsOccupied(point);
     }
 
+    // 先采样地形高度，失败再向下射线。
     bool TrySampleGround(Vector3 xz, out Vector3 point, out Vector3 normal)
     {
         foreach (Terrain terrain in Terrain.activeTerrains)
@@ -255,6 +273,7 @@ public sealed class EnemySpawner : MonoBehaviour
         return false;
     }
 
+    // 该点是否已有活着的敌人挤在最小间距内。
     bool IsOccupied(Vector3 point)
     {
         float minSqr = minSeparation * minSeparation;
@@ -274,6 +293,7 @@ public sealed class EnemySpawner : MonoBehaviour
         return false;
     }
 
+    // 忽略高度的平面距离。
     static float PlanarDistance(Vector3 a, Vector3 b)
     {
         a.y = 0f;
@@ -281,6 +301,7 @@ public sealed class EnemySpawner : MonoBehaviour
         return Vector3.Distance(a, b);
     }
 
+    // 在编辑器中画出营地半径与唤醒/休眠圈。
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 0.45f, 0.15f, 0.35f);

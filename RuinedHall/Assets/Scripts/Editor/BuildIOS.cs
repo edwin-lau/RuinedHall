@@ -4,12 +4,17 @@ using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
 
+/// <summary>
+/// 导出 HelpOthers 的 iOS Xcode 工程，并写入签名、横屏、图标。
+/// 也可以靠 Temp/BuildIOSNow.flag 在编辑器里自动触发。
+/// </summary>
 public static class BuildIOS
 {
     const string FlagPath = "Temp/BuildIOSNow.flag";
     const string OutputPath = "Builds/iOS";
     const string IconPath = "Assets/Resources/characters/hero/imges/college.png";
 
+    /// <summary>编辑器启动后监听 flag 文件。</summary>
     [InitializeOnLoadMethod]
     static void RegisterBuildHook()
     {
@@ -17,6 +22,7 @@ public static class BuildIOS
         EditorApplication.update += TryBuildIfFlagged;
     }
 
+    /// <summary>发现 flag 就删掉并立刻打包（给外部脚本用）。</summary>
     static void TryBuildIfFlagged()
     {
         if (!File.Exists(FlagPath))
@@ -27,6 +33,7 @@ public static class BuildIOS
         Build();
     }
 
+    /// <summary>菜单：Build/iOS Device。</summary>
     [MenuItem("Build/iOS Device")]
     public static void BuildFromMenu()
     {
@@ -37,6 +44,7 @@ public static class BuildIOS
         }
     }
 
+    /// <summary>真正调用 BuildPipeline，只打 HelpOthers 场景。</summary>
     public static int Build()
     {
         ApplyPlayerSettings();
@@ -61,6 +69,7 @@ public static class BuildIOS
         return 0;
     }
 
+    /// <summary>包名、自动签名、仅横屏、应用图标。</summary>
     static void ApplyPlayerSettings()
     {
         PlayerSettings.companyName = "Liu Hongbin";
@@ -69,7 +78,7 @@ public static class BuildIOS
         PlayerSettings.iOS.appleEnableAutomaticSigning = true;
         PlayerSettings.iOS.appleDeveloperTeamID = "L7S49HJY3G";
         PlayerSettings.iOS.targetOSVersionString = "15.0";
-        PlayerSettings.iOS.buildNumber = "4";
+        PlayerSettings.iOS.buildNumber = "5";
 
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
         PlayerSettings.allowedAutorotateToPortrait = false;
@@ -92,6 +101,7 @@ public static class BuildIOS
         PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new[] { icon }, IconKind.Application);
     }
 
+    /// <summary>某类 iOS 图标槽全部填同一张图。</summary>
     static void AssignIosIcons(Texture2D icon, PlatformIconKind kind)
     {
         var icons = PlayerSettings.GetPlatformIcons(NamedBuildTarget.iOS, kind);

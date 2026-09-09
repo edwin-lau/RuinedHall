@@ -4,6 +4,9 @@ using UnityEngine;
 using UnityEditor;
 #endif
 
+/// <summary>
+/// Sidekick 换装预览用的材质和示例预制体加载入口。
+/// </summary>
 public static class SidekickLooks
 {
     const string HumanMatPath =
@@ -33,6 +36,7 @@ public static class SidekickLooks
     public static GameObject MixExample { get; private set; }
     public static GameObject HorrorExample { get; private set; }
 
+    /// <summary>加载四套材质和示例角色，编辑器走 AssetDatabase，真机走 Resources。</summary>
     public static void Ensure()
     {
         Human = LoadMat(HumanMatPath);
@@ -45,6 +49,7 @@ public static class SidekickLooks
         HorrorExample = LoadPrefab(HorrorPrefabPath);
     }
 
+    /// <summary>先按工程路径加载材质，失败再按 Resources 文件名加载。</summary>
     static Material LoadMat(string path)
     {
 #if UNITY_EDITOR
@@ -55,6 +60,7 @@ public static class SidekickLooks
         return Resources.Load<Material>("Sidekick/Looks/" + System.IO.Path.GetFileNameWithoutExtension(path));
     }
 
+    /// <summary>先按工程路径加载预制体，失败再按 Resources 文件名加载。</summary>
     static GameObject LoadPrefab(string path)
     {
 #if UNITY_EDITOR

@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 探测 Crest 海面和 WaterBody，供刷怪/巡逻避开水面。
+/// </summary>
 public static class WaterProbe
 {
     static readonly List<Transform> Bodies = new();
@@ -10,6 +13,7 @@ public static class WaterProbe
 
     public static float SeaLevel => _hasSeaLevel ? _seaLevel : 0f;
 
+    /// <summary>点是否在水体 XZ 范围内且高度低于水面。</summary>
     public static bool IsInWater(Vector3 point)
     {
         RefreshIfNeeded();
@@ -28,6 +32,7 @@ public static class WaterProbe
         return false;
     }
 
+    /// <summary>两点之间采样 6 次，有一段在水里就算穿过水面。</summary>
     public static bool CrossesWater(Vector3 from, Vector3 to)
     {
         for (int i = 1; i <= 6; i++)
@@ -39,6 +44,7 @@ public static class WaterProbe
         return false;
     }
 
+    /// <summary>在半径内找一块不在水里的落点，给巡逻/逃跑用。</summary>
     public static bool TryFindLand(Vector3 from, float radius, out Vector3 land)
     {
         RefreshIfNeeded();
@@ -60,6 +66,7 @@ public static class WaterProbe
         return !IsInWater(from);
     }
 
+    /// <summary>从当前点离开最近水体中心的水平方向。</summary>
     public static Vector3 EscapeDirection(Vector3 point, Vector3 incoming)
     {
         RefreshIfNeeded();
@@ -84,11 +91,13 @@ public static class WaterProbe
         return Vector3.forward;
     }
 
+    /// <summary>海面高度；没有 OceanRenderer 时用兜底值。</summary>
     static float SurfaceY()
     {
         return _hasSeaLevel ? _seaLevel : 7.3f;
     }
 
+    /// <summary>点是否落在水体 XZ 包围盒内（带 padding）。</summary>
     static bool ContainsXz(Transform body, Vector3 point, float padding)
     {
         Vector3 center = body.position;
@@ -97,6 +106,7 @@ public static class WaterProbe
                Mathf.Abs(point.z - center.z) <= Mathf.Abs(half.z) + padding;
     }
 
+    /// <summary>只扫一次场景：记下海面高度和普通 WaterBody（排除 Ocean 本体）。</summary>
     static void RefreshIfNeeded()
     {
         if (_initialized)

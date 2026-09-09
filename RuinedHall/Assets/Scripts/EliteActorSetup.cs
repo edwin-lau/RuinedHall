@@ -1,7 +1,11 @@
 using UnityEngine;
 
+/// <summary>
+/// 给场景里的精英角色（盗贼、雷神木桩等）补齐动作播放器和战斗组件。
+/// </summary>
 public static class EliteActorSetup
 {
+    /// <summary>确保命名精英都挂上战斗所需组件。</summary>
     public static void EnsureNamedElites()
     {
         SkeletonRogueSetup.Ensure();
@@ -9,6 +13,7 @@ public static class EliteActorSetup
         EnsureThorDummy();
     }
 
+    /// <summary>给雷神木桩补动作播放器和战斗代理。</summary>
     static void EnsureThorDummy()
     {
         GameObject actor = GameObject.Find("thor-god") ?? GameObject.Find("thor");
@@ -17,6 +22,7 @@ public static class EliteActorSetup
 
         if (actor.GetComponent<CharacterCombatAgent>() == null)
         {
+            // 没有动作播放器时，用 Animator 片段临时拼一份配置
             if (actor.GetComponent<CharacterActionPlayer>() == null)
             {
                 var player = actor.AddComponent<CharacterActionPlayer>();
@@ -31,12 +37,14 @@ public static class EliteActorSetup
         }
     }
 
+    /// <summary>按物体名查找角色并装上动作配置与战斗组件。</summary>
     static void TryEnsure(string objectName)
     {
         GameObject actor = GameObject.Find(objectName);
         if (actor == null || actor.GetComponent<CharacterCombatAgent>() != null)
             return;
 
+        // 骷髅走 SkeletonRogue 配置，其余走 Rogue；资源缺失再从 Animator 推断
         CharacterActionProfile profile = Resources.Load<CharacterActionProfile>(
             objectName.IndexOf("Skeleton", System.StringComparison.OrdinalIgnoreCase) >= 0
                 ? "characters/Profiles/SkeletonRogueActions"
@@ -65,6 +73,7 @@ public static class EliteActorSetup
         actor.AddComponent<CharacterCombatAgent>();
     }
 
+    /// <summary>从 Animator 片段推断 Idle/移动/攻击等动作配置。</summary>
     static CharacterActionProfile BuildProfileFromAnimator(GameObject actor)
     {
         var animator = actor.GetComponent<Animator>();
@@ -74,6 +83,7 @@ public static class EliteActorSetup
         if (clips == null || clips.Length == 0)
             return null;
 
+        // 按关键字挑常用动作；没有 Idle 就退回第一条片段
         AnimationClip idle = FindClip(clips, "idle", "stand");
         AnimationClip move = FindClip(clips, "walk", "run", "move");
         AnimationClip attack = FindClip(clips, "attack", "slash", "melee");
@@ -99,6 +109,7 @@ public static class EliteActorSetup
         return profile;
     }
 
+    /// <summary>按名称关键字在片段列表里找第一条匹配。</summary>
     static AnimationClip FindClip(AnimationClip[] clips, params string[] tokens)
     {
         foreach (string token in tokens)

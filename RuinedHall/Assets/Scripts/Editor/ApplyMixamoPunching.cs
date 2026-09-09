@@ -5,9 +5,8 @@ using UnityEditor.Animations;
 using UnityEngine;
 
 /// <summary>
-/// Copies the Mixamo Punching clip (as previewed on the Mixamo FBX) into Punching.anim
-/// and points Hero.controller at it. Idle/Walk/Run/Jump/Death use a bind-pose Idle clip
-/// that matches the Mixamo skeleton.
+/// 把 Mixamo Punching 片段（与 FBX Inspector 预览一致）拷进 Punching.anim，
+/// 并接到 Hero.controller。Idle/Walk/Run/Jump/Death 改用匹配 Mixamo 骨骼的绑定姿势 Idle。
 /// </summary>
 public static class ApplyMixamoPunching
 {
@@ -17,6 +16,7 @@ public static class ApplyMixamoPunching
     const string IdleMixamoAnim = "Assets/Resources/characters/hero/Idle_Mixamo.anim";
     const string ControllerPath = "Assets/Resources/characters/hero/Hero.controller";
 
+    /// <summary>编辑器加载时挂上检测标记文件的回调。</summary>
     [InitializeOnLoadMethod]
     static void Register()
     {
@@ -24,6 +24,7 @@ public static class ApplyMixamoPunching
         EditorApplication.update += Tick;
     }
 
+    /// <summary>看到标记文件后执行一次 Apply，然后卸掉回调。</summary>
     static void Tick()
     {
         if (!File.Exists(FlagPath))
@@ -40,6 +41,7 @@ public static class ApplyMixamoPunching
         }
     }
 
+    /// <summary>从 Mixamo FBX 抽出 Punching，并改写 Hero.controller 的 Punch/Idle。</summary>
     [MenuItem("Build/Apply Mixamo Punching")]
     public static void Apply()
     {
@@ -50,6 +52,7 @@ public static class ApplyMixamoPunching
             return;
         }
 
+        // Generic 导入，保证片段和 Inspector 预览一致。
         importer.animationType = ModelImporterAnimationType.Generic;
         importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
         importer.importAnimation = true;
@@ -64,7 +67,7 @@ public static class ApplyMixamoPunching
             return;
         }
 
-        // Overwrite Punching.anim with the exact Mixamo clip (same as Inspector preview).
+        // 用 Mixamo 原片覆盖 Punching.anim，效果与 Inspector 预览一致。
         var punching = AssetDatabase.LoadAssetAtPath<AnimationClip>(PunchingAnim);
         if (punching == null)
         {
@@ -79,7 +82,7 @@ public static class ApplyMixamoPunching
             EditorUtility.SetDirty(punching);
         }
 
-        // Bind-pose idle for Mixamo skeleton (empty clip + Write Defaults).
+        // Mixamo 骨骼用绑定姿势 Idle（空片段 + Write Defaults）。
         var idle = AssetDatabase.LoadAssetAtPath<AnimationClip>(IdleMixamoAnim);
         if (idle == null)
         {
@@ -94,6 +97,7 @@ public static class ApplyMixamoPunching
             return;
         }
 
+        // Punch 用拳击片段，其它状态改成 Mixamo 绑定姿势 Idle。
         foreach (var layer in controller.layers)
         {
             foreach (ChildAnimatorState child in layer.stateMachine.states)

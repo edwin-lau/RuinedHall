@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>特效来源：预制体，或运行时拼的火花/尘土。</summary>
 public enum CharacterEffectKind
 {
     Prefab,
@@ -9,6 +10,7 @@ public enum CharacterEffectKind
     DustBurst
 }
 
+/// <summary>动作时间轴上的一次特效触发。</summary>
 [Serializable]
 public sealed class CharacterEffectCue
 {
@@ -34,6 +36,7 @@ public sealed class CharacterEffectCue
     public Color Color => color;
     public float Size => Mathf.Max(0.01f, size);
 
+    /// <summary>编辑器或代码里组装一条特效 cue。</summary>
     public CharacterEffectCue(
         CharacterEffectKind kind,
         float triggerTime,
@@ -57,6 +60,7 @@ public sealed class CharacterEffectCue
     }
 }
 
+/// <summary>一条语义动作：Idle/Move/Hit 等对应的 clip 与命中时刻。</summary>
 [Serializable]
 public sealed class CharacterActionDefinition
 {
@@ -77,6 +81,7 @@ public sealed class CharacterActionDefinition
     public IReadOnlyList<CharacterEffectCue> Effects => effects;
     public float Duration => AnimPlayback.Length(clip, Speed);
 
+    /// <summary>代码里直接 new 一条动作定义。</summary>
     public CharacterActionDefinition(
         string id,
         AnimationClip clip,
@@ -96,6 +101,7 @@ public sealed class CharacterActionDefinition
     }
 }
 
+/// <summary>角色动作表 ScriptableObject，按动作 Id 查找 clip。</summary>
 [CreateAssetMenu(
     fileName = "CharacterActionProfile",
     menuName = "Ruined Hall/Character Action Profile")]
@@ -110,11 +116,13 @@ public sealed class CharacterActionProfile : ScriptableObject
     public string DefaultAction => defaultAction;
     public IReadOnlyList<CharacterActionDefinition> Actions => actions;
 
+    /// <summary>资源启用时重建 Id 查找表。</summary>
     void OnEnable()
     {
         RebuildLookup();
     }
 
+    /// <summary>按动作名取定义；表过期会先重建。</summary>
     public bool TryGet(string actionId, out CharacterActionDefinition action)
     {
         if (_lookup.Count != actions.Count)
@@ -122,6 +130,7 @@ public sealed class CharacterActionProfile : ScriptableObject
         return _lookup.TryGetValue(actionId ?? string.Empty, out action);
     }
 
+    /// <summary>运行时替换整张动作表。</summary>
     public void Configure(
         string newDefaultAction,
         IEnumerable<CharacterActionDefinition> newActions)
@@ -133,6 +142,7 @@ public sealed class CharacterActionProfile : ScriptableObject
         RebuildLookup();
     }
 
+    /// <summary>用动作 Id 做字典，忽略大小写。</summary>
     void RebuildLookup()
     {
         _lookup.Clear();

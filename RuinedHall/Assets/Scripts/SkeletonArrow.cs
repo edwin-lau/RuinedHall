@@ -1,5 +1,8 @@
 using UnityEngine;
 
+/// <summary>
+/// 骷髅飞矢：水平飞行，碰到玩家则造成伤害并短时插在身上。
+/// </summary>
 public sealed class SkeletonArrow : MonoBehaviour
 {
     const float VisualScale = 13.5f;
@@ -15,6 +18,7 @@ public sealed class SkeletonArrow : MonoBehaviour
     bool _stuck;
     bool _launchedFromHand;
 
+    /// <summary>把手上的箭拆下来当飞矢发射。</summary>
     public static SkeletonArrow LaunchFromHand(
         Transform handArrow,
         Vector3 direction,
@@ -42,6 +46,7 @@ public sealed class SkeletonArrow : MonoBehaviour
         return arrow;
     }
 
+    /// <summary>从预制体生成一支出手飞矢。</summary>
     public static void Launch(
         GameObject prefab,
         Vector3 origin,
@@ -70,6 +75,7 @@ public sealed class SkeletonArrow : MonoBehaviour
         arrow.Init(owner, direction, damage, range, speed, stickDuration, origin.y, false);
     }
 
+    /// <summary>记下飞行参数，并补一个触发盒。</summary>
     void Init(
         CharacterCombatAgent owner,
         Vector3 direction,
@@ -98,12 +104,14 @@ public sealed class SkeletonArrow : MonoBehaviour
         box.center = new Vector3(0f, 0f, 1.05f);
     }
 
+    /// <summary>手射出去的箭销毁后，让骷髅再生成手上的箭。</summary>
     void OnDestroy()
     {
         if (_launchedFromHand && _owner != null && !_owner.IsDead)
             _owner.RestoreHandArrow();
     }
 
+    /// <summary>飞行、碰玩家、超射程销毁；已插入则等到时再删。</summary>
     void Update()
     {
         if (_stuck)
@@ -132,6 +140,7 @@ public sealed class SkeletonArrow : MonoBehaviour
                 return;
             }
 
+            // 碰到自己忽略，碰到别的障碍直接消失
             if (_owner != null && hit.collider.GetComponentInParent<CharacterCombatAgent>() == _owner)
             {
                 transform.position = next;
@@ -153,6 +162,7 @@ public sealed class SkeletonArrow : MonoBehaviour
             Destroy(gameObject);
     }
 
+    /// <summary>造成伤害并挂到玩家身上一小段时间。</summary>
     void StickTo(HeroController hero, Vector3 worldPoint)
     {
         _stuck = true;
@@ -163,6 +173,7 @@ public sealed class SkeletonArrow : MonoBehaviour
         _stickUntil = Time.time + Mathf.Max(0.2f, _stickUntil);
     }
 
+    /// <summary>触发器碰到玩家同样结算插入。</summary>
     void OnTriggerEnter(Collider other)
     {
         if (_stuck || other == null)

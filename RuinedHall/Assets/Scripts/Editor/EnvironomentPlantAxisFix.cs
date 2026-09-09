@@ -2,6 +2,9 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
+/// <summary>
+/// 导入 Environoment 目录下指定植物模型时，把网格绕 X 轴转 -90°，纠正轴向。
+/// </summary>
 public class EnvironomentPlantAxisFix : AssetPostprocessor
 {
     static readonly string[] PlantNames =
@@ -14,6 +17,7 @@ public class EnvironomentPlantAxisFix : AssetPostprocessor
         "Rose"
     };
 
+    /// <summary>目标植物导入前打开可读并关掉网格压缩，方便后续烘焙旋转。</summary>
     void OnPreprocessModel()
     {
         if (!IsTargetPlant(assetPath))
@@ -24,6 +28,7 @@ public class EnvironomentPlantAxisFix : AssetPostprocessor
         importer.meshCompression = ModelImporterMeshCompression.Off;
     }
 
+    /// <summary>导入后把子网格顶点/法线/切线绕 X 轴转 -90°。</summary>
     void OnPostprocessModel(GameObject gameObject)
     {
         if (!IsTargetPlant(assetPath))
@@ -36,6 +41,7 @@ public class EnvironomentPlantAxisFix : AssetPostprocessor
             BakeRotation(renderer.sharedMesh, rot);
     }
 
+    /// <summary>路径在 Environoment 下且文件名是已知植物才处理。</summary>
     static bool IsTargetPlant(string path)
     {
         string normalized = path.Replace('\\', '/');
@@ -52,6 +58,7 @@ public class EnvironomentPlantAxisFix : AssetPostprocessor
         return false;
     }
 
+    /// <summary>把网格顶点、法线和切线乘上同一旋转并重算包围盒。</summary>
     static void BakeRotation(Mesh mesh, Quaternion rotation)
     {
         if (mesh == null)
@@ -62,6 +69,7 @@ public class EnvironomentPlantAxisFix : AssetPostprocessor
             vertices[i] = rotation * vertices[i];
         mesh.vertices = vertices;
 
+        // 法线和切线跟顶点一起转，避免光照方向错了
         Vector3[] normals = mesh.normals;
         if (normals != null && normals.Length == vertices.Length)
         {

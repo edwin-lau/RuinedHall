@@ -1,0 +1,16 @@
+Punch miss / whoosh candidates (free for game use).
+
+OpenGameArt — Swishes Sound Pack by artisticdude
+License: CC0
+https://opengameart.org/content/swishes-sound-pack
+Files: oga_swish_light_1..4.wav, oga_swish_heavy_7.wav
+
+Mixkit free sound effects
+License: Mixkit License (free personal/commercial use; see mixkit.co/license)
+https://mixkit.co/free-sound-effects/punch/
+Files:
+  mixkit_air_in_a_hit.wav
+  mixkit_blow_breaking_air.wav
+  mixkit_air_whistle_punch.wav
+  mixkit_punch_hard_whistle.wav
+  mixkit_fast_blow.wav

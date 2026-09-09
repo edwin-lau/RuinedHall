@@ -1,11 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 给场景里的 Skeleton Rogue 补动作表、碰撞和战斗组件。
+/// </summary>
 public static class SkeletonRogueSetup
 {
     const string GeneralPath = "characters/Skeleton/Animations/fbx/Rig_Medium/Rig_Medium_General";
     const string MovePath = "characters/Skeleton/Animations/fbx/Rig_Medium/Rig_Medium_MovementBasic";
 
+    /// <summary>按名字找到 Rogue，挂上 Animator / ActionPlayer / Combat。</summary>
     public static void Ensure()
     {
         GameObject actor = GameObject.Find("Skeleton_Rogue (1)") ?? GameObject.Find("Skeleton_Rogue");
@@ -42,6 +46,7 @@ public static class SkeletonRogueSetup
             actor.AddComponent<CharacterCombatAgent>();
     }
 
+    /// <summary>从 Resources 动画拼一份动作表；失败则退回已有 asset。</summary>
     static CharacterActionProfile BuildProfile()
     {
         var existing = Resources.Load<CharacterActionProfile>("characters/Profiles/SkeletonRogueActions");
@@ -66,6 +71,7 @@ public static class SkeletonRogueSetup
         return profile;
     }
 
+    /// <summary>加载 idle/move 两类 FBX 里的 clip。</summary>
     static AnimationClip[] LoadClips()
     {
         var list = new List<AnimationClip>();
@@ -74,6 +80,7 @@ public static class SkeletonRogueSetup
         return list.ToArray();
     }
 
+    /// <summary>按名字关键字找 clip，忽略预览片段。</summary>
     static AnimationClip Find(AnimationClip[] clips, params string[] tokens)
     {
         foreach (string token in tokens)
@@ -91,6 +98,7 @@ public static class SkeletonRogueSetup
         return null;
     }
 
+    /// <summary>有 clip 才加入动作表。</summary>
     static void Add(
         List<CharacterActionDefinition> actions,
         string id,

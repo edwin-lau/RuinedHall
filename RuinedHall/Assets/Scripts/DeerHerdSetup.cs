@@ -1,11 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// 布置母鹿与雄鹿：配置动作、先藏雄鹿，母鹿半血时再放出加入战斗。
+/// </summary>
 public static class DeerHerdSetup
 {
     static GameObject _stag;
     static bool _stagReleased;
 
+    /// <summary>找到母鹿/雄鹿，挂动作与战斗，并先关掉雄鹿。</summary>
     public static void Ensure()
     {
         GameObject doe = FindByTokens("deer-female") ??
@@ -31,6 +35,7 @@ public static class DeerHerdSetup
         }
     }
 
+    /// <summary>在母鹿附近放出雄鹿并强制追击。</summary>
     public static void ReleaseStag(CharacterCombatAgent doe)
     {
         if (_stagReleased || _stag == null || doe == null)
@@ -39,6 +44,8 @@ public static class DeerHerdSetup
         _stagReleased = true;
         Vector3 origin = doe.transform.position;
         Vector3 away = doe.transform.right;
+
+        // 尽量出现在玩家视线侧面，避免和母鹿叠在一起
         var hero = Object.FindAnyObjectByType<HeroController>();
         if (hero != null)
         {
@@ -64,6 +71,7 @@ public static class DeerHerdSetup
         }
     }
 
+    /// <summary>给单只鹿装 Animator、动作播放器、控制器和战斗组件。</summary>
     static void ConfigureDeer(GameObject actor, CharacterActionProfile profile, bool stag)
     {
         if (actor == null)
@@ -76,6 +84,7 @@ public static class DeerHerdSetup
         animator.applyRootMotion = false;
         animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 
+        // 共用鹿动作配置；雄鹿碰撞体略大
         if (profile != null)
         {
             var player = actor.GetComponent<CharacterActionPlayer>();
@@ -99,6 +108,7 @@ public static class DeerHerdSetup
             actor.AddComponent<CharacterCombatAgent>();
     }
 
+    /// <summary>从 doe/stag 资源拼出鹿的动作配置。</summary>
     static CharacterActionProfile BuildDeerProfile()
     {
         AnimationClip[] doeClips = Resources.LoadAll<AnimationClip>("characters/others/doe");
@@ -116,6 +126,7 @@ public static class DeerHerdSetup
         return CreateProfile("Idle", actions);
     }
 
+    /// <summary>按名称关键字找动画片段，跳过预览剪辑。</summary>
     static AnimationClip FindClip(AnimationClip[] clips, params string[] tokens)
     {
         if (clips == null)
@@ -134,6 +145,7 @@ public static class DeerHerdSetup
         return null;
     }
 
+    /// <summary>有片段才加入动作定义。</summary>
     static void AddClip(
         List<CharacterActionDefinition> actions,
         string id,
@@ -146,6 +158,7 @@ public static class DeerHerdSetup
         actions.Add(new CharacterActionDefinition(id, clip, loop, 1f, 0.1f, impactTime));
     }
 
+    /// <summary>生成动作配置，默认动作缺失时改用第一条。</summary>
     static CharacterActionProfile CreateProfile(string defaultAction, List<CharacterActionDefinition> actions)
     {
         if (actions.Count == 0)
@@ -158,11 +171,13 @@ public static class DeerHerdSetup
         return profile;
     }
 
+    /// <summary>按名字包含的关键字查找激活物体。</summary>
     static GameObject FindByTokens(params string[] tokens)
     {
         return FindByTokens(false, tokens);
     }
 
+    /// <summary>在场景 Transform 中按名字包含全部关键字查找物体。</summary>
     static GameObject FindByTokens(bool includeInactive, params string[] tokens)
     {
         var transforms = includeInactive

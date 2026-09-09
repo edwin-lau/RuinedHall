@@ -1,5 +1,6 @@
 using UnityEngine;
 
+// 出拳范围可视化：地面扇形或内外圈，用来调出手距离。
 public sealed class PunchRangeDisplay : MonoBehaviour
 {
     const int ArcSegments = 20;
@@ -17,12 +18,14 @@ public sealed class PunchRangeDisplay : MonoBehaviour
     TextMesh _innerLabel;
     TextMesh _outerLabel;
 
+    // 创建独立的出拳范围显示物体。
     public static PunchRangeDisplay Create()
     {
         var go = new GameObject("PunchRange");
         return go.AddComponent<PunchRangeDisplay>();
     }
 
+    // 准备扇形填充、内外圈线与半透明材质。
     void Awake()
     {
         _lineMat = MakeColorMaterial(new Color(1f, 0.82f, 0.2f, 0.95f));
@@ -47,6 +50,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
         Hide();
     }
 
+    // 关掉所有线、填充和距离文字。
     public void Hide()
     {
         if (_ring != null)
@@ -61,6 +65,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
             _outerLabel.gameObject.SetActive(false);
     }
 
+    // 在脚底画朝前的出拳扇形；命中结果用绿 / 红区分。
     public void Show(
         Vector3 feet,
         Vector3 forward,
@@ -105,6 +110,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
         BuildSector(origin, forward, radius, half);
     }
 
+    // 画出手圈和打中圈，并标上半径文字。
     public void ShowRings(
         Vector3 feet,
         float innerRadius,
@@ -137,6 +143,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
         PlaceLabel(ref _outerLabel, origin + Vector3.right * Mathf.Max(outerRadius, innerRadius), outerName + " " + Mathf.Max(outerRadius, innerRadius).ToString("0.0"));
     }
 
+    // 在世界坐标放一段面向相机的半径标签。
     void PlaceLabel(ref TextMesh label, Vector3 world, string text)
     {
         if (label == null)
@@ -158,6 +165,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
             label.transform.rotation = Camera.main.transform.rotation;
     }
 
+    // 用折线画一个水平圆。
     static void DrawCircle(LineRenderer line, Vector3 origin, float radius, int segments)
     {
         if (line.positionCount != segments)
@@ -169,6 +177,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
         }
     }
 
+    // 生成扇形填充网格。
     void BuildSector(Vector3 origin, Vector3 forward, float radius, float halfDegrees)
     {
         int count = ArcSegments + 2;
@@ -196,6 +205,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
         _fill.transform.localScale = Vector3.one;
     }
 
+    // 生成实心圆盘填充网格。
     void BuildDisc(Vector3 origin, float radius)
     {
         var verts = new Vector3[CircleSegments + 1];
@@ -219,6 +229,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
         _fill.transform.localScale = Vector3.one;
     }
 
+    // 创建一条世界空间折线。
     LineRenderer CreateLine(string name, float width, Material material)
     {
         var go = new GameObject(name, typeof(LineRenderer));
@@ -234,6 +245,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
         return line;
     }
 
+    // 找无光照 Shader 并做成双面彩色材质。
     static Material MakeColorMaterial(Color color)
     {
         Shader shader = Shader.Find("Sprites/Default");
@@ -247,6 +259,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
         return mat;
     }
 
+    // 同时写 _Color 和 _BaseColor，兼容不同 Shader。
     static void SetMaterialColor(Material mat, Color color)
     {
         if (mat.HasProperty("_Color"))
@@ -255,6 +268,7 @@ public sealed class PunchRangeDisplay : MonoBehaviour
             mat.SetColor("_BaseColor", color);
     }
 
+    // 销毁运行时创建的材质和网格。
     void OnDestroy()
     {
         if (_fillMat != null)

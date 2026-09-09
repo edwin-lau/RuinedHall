@@ -3,6 +3,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
+// 运行时拼出的游戏 HUD：血量、体力、摇杆、出拳/跳跃与复活对话框。
 public class GameHud : MonoBehaviour
 {
     const string HeroPortraitResource = "characters/hero/imges/college";
@@ -28,12 +29,16 @@ public class GameHud : MonoBehaviour
     [SerializeField] Button reviveCancel;
     [SerializeField] Button addStaminaButton;
 
+    // 左下角虚拟摇杆。
     public VirtualJoystick Joystick => joystick;
+    // 出拳按钮。
     public MobileActionButton PunchButton => punchButton;
+    // 跳跃按钮。
     public MobileActionButton JumpButton => jumpButton;
 
     HeroController _hero;
 
+    // 创建 Overlay Canvas 并立刻拼出全部 HUD。
     public static GameHud Create()
     {
         EnsureEventSystem();
@@ -54,6 +59,7 @@ public class GameHud : MonoBehaviour
         return hud;
     }
 
+    // 订阅英雄血量 / 体力 / 死亡事件并刷新界面。
     public void BindHero(HeroController hero)
     {
         if (_hero != null)
@@ -83,6 +89,7 @@ public class GameHud : MonoBehaviour
             HideReviveDialog();
     }
 
+    // 订阅进度变化并补齐右上角进度条。
     void OnEnable()
     {
         PlayerProgress.Changed += RefreshProgress;
@@ -91,11 +98,13 @@ public class GameHud : MonoBehaviour
         RefreshProgress();
     }
 
+    // 取消进度事件订阅。
     void OnDisable()
     {
         PlayerProgress.Changed -= RefreshProgress;
     }
 
+    // 解绑英雄与进度事件，避免销毁后仍回调。
     void OnDestroy()
     {
         if (_hero != null)
@@ -108,6 +117,7 @@ public class GameHud : MonoBehaviour
         PlayerProgress.Changed -= RefreshProgress;
     }
 
+    // 拼出头像血条、进度栏、复活框与操作按钮。
     public void Build()
     {
         Sprite circle = LoadCircleSprite();
@@ -133,6 +143,7 @@ public class GameHud : MonoBehaviour
             circle);
     }
 
+    // 左上角：圆形头像、名字、血条与奔跑体力条。
     void BuildHeroStatus(Sprite circle)
     {
         var root = CreateUiObject("HeroStatus", transform);
@@ -143,6 +154,7 @@ public class GameHud : MonoBehaviour
         rootRt.sizeDelta = new Vector2(560f, 148f);
         rootRt.anchoredPosition = new Vector2(36f, -28f);
 
+        // 圆形头像框与遮罩
         var frameGo = CreateUiObject("AvatarFrame", rootRt);
         var frameRt = frameGo.GetComponent<RectTransform>();
         frameRt.anchorMin = new Vector2(0f, 0.5f);
@@ -178,6 +190,7 @@ public class GameHud : MonoBehaviour
             ? Color.white
             : new Color(0.75f, 0.62f, 0.42f, 1f);
 
+        // 名字、血条、奔跑体力
         var infoGo = CreateUiObject("Info", rootRt);
         var infoRt = infoGo.GetComponent<RectTransform>();
         infoRt.anchorMin = new Vector2(0f, 0.5f);
@@ -261,6 +274,7 @@ public class GameHud : MonoBehaviour
         runStaminaFill.fillAmount = 1f;
     }
 
+    // 旧 HUD 缺少奔跑体力条时补建一条。
     void EnsureRunStaminaBar()
     {
         if (runStaminaFill != null)
@@ -299,6 +313,7 @@ public class GameHud : MonoBehaviour
         runStaminaFill.fillAmount = 1f;
     }
 
+    // 右上角：精英击杀、金币、复活体力。
     void EnsureProgressHud()
     {
         if (goldText != null && eliteText != null && reviveStaminaText != null)
@@ -327,6 +342,7 @@ public class GameHud : MonoBehaviour
         EnsureAddStaminaButton();
     }
 
+    // 确保右上角有“+体力”按钮，并置顶以免被挡住。
     void EnsureAddStaminaButton()
     {
         if (addStaminaButton != null)
@@ -364,17 +380,20 @@ public class GameHud : MonoBehaviour
         addStaminaButton.transform.SetAsLastSibling();
     }
 
+    // 调试用：点一次加 1 点体力。
     void OnAddStamina()
     {
         PlayerProgress.Instance.AddStamina(1);
     }
 
+    // 每帧把加体力按钮提到最前，避免被其它层挡住。
     void LateUpdate()
     {
         if (addStaminaButton != null)
             addStaminaButton.transform.SetAsLastSibling();
     }
 
+    // 创建一行“图标 + 数值”的进度条目。
     void CreateProgressRow(
         RectTransform parent,
         string objectName,
@@ -418,6 +437,7 @@ public class GameHud : MonoBehaviour
         valueText.font = ResolveUiFont(30);
     }
 
+    // 创建右对齐的进度文字（复活对话框也复用）。
     Text CreateProgressLabel(RectTransform parent, string objectName, Vector2 anchored, string value)
     {
         var go = CreateUiObject(objectName, parent);
@@ -437,6 +457,7 @@ public class GameHud : MonoBehaviour
         return text;
     }
 
+    // 用当前进度刷新金币、击杀与体力数字。
     void RefreshProgress()
     {
         EnsureProgressHud();
@@ -450,11 +471,13 @@ public class GameHud : MonoBehaviour
         RefreshReviveMessage();
     }
 
+    // 英雄死亡时弹出复活确认框。
     void OnHeroDied()
     {
         ShowReviveDialog();
     }
 
+    // 懒创建半透明复活对话框（确定 / 取消）。
     void EnsureReviveDialog()
     {
         if (revivePanel != null)
@@ -499,6 +522,7 @@ public class GameHud : MonoBehaviour
         HideReviveDialog();
     }
 
+    // 创建对话框底部的彩色按钮。
     Button CreateDialogButton(RectTransform parent, string objectName, string label, Vector2 anchored, Color color)
     {
         var go = CreateUiObject(objectName, parent);
@@ -527,6 +551,7 @@ public class GameHud : MonoBehaviour
         return button;
     }
 
+    // 显示复活对话框并刷新体力提示。
     void ShowReviveDialog()
     {
         EnsureReviveDialog();
@@ -535,12 +560,14 @@ public class GameHud : MonoBehaviour
             revivePanel.SetActive(true);
     }
 
+    // 隐藏复活对话框。
     void HideReviveDialog()
     {
         if (revivePanel != null)
             revivePanel.SetActive(false);
     }
 
+    // 按当前体力更新复活文案，并禁用“确定”当体力不足。
     void RefreshReviveMessage()
     {
         if (reviveMessage == null)
@@ -554,6 +581,7 @@ public class GameHud : MonoBehaviour
             reviveConfirm.interactable = stamina > 0;
     }
 
+    // 确认复活：扣体力后让英雄复活。
     void OnReviveConfirm()
     {
         if (_hero == null || !_hero.IsDead)
@@ -572,22 +600,26 @@ public class GameHud : MonoBehaviour
         HideReviveDialog();
     }
 
+    // 血量变化回调。
     void OnHeroHealth(int current, int max)
     {
         SetHealth(current, max);
     }
 
+    // 奔跑体力变化回调。
     void OnHeroRunStamina(float amount)
     {
         SetRunStamina(amount);
     }
 
+    // 刷新奔跑体力填充条。
     void SetRunStamina(float amount)
     {
         if (runStaminaFill != null)
             runStaminaFill.fillAmount = Mathf.Clamp01(amount);
     }
 
+    // 刷新血条填充与数字。
     void SetHealth(int current, int max)
     {
         max = Mathf.Max(1, max);
@@ -598,6 +630,7 @@ public class GameHud : MonoBehaviour
             healthText.text = $"{current} / {max}";
     }
 
+    // 从 Resources 加载英雄头像，纹理会转成 Sprite。
     static Sprite LoadHeroPortrait()
     {
         var sprite = Resources.Load<Sprite>(HeroPortraitResource);
@@ -615,18 +648,21 @@ public class GameHud : MonoBehaviour
             100f);
     }
 
+    // 加载圆形 Sprite，缺失时用程序生成。
     static Sprite LoadCircleSprite()
     {
         var sprite = Resources.Load<Sprite>(CircleSpriteResource);
         return sprite != null ? sprite : UiSprites.Circle(256);
     }
 
+    // 加载白色 Sprite，缺失时用程序生成。
     static Sprite LoadWhiteSprite()
     {
         var sprite = Resources.Load<Sprite>(WhiteSpriteResource);
         return sprite != null ? sprite : UiSprites.White();
     }
 
+    // 左下角虚拟摇杆：透明触摸区 + 底座/环/旋钮。
     VirtualJoystick BuildJoystick(Sprite circle)
     {
         var zoneGo = CreateUiObject("JoystickZone", transform);
@@ -686,6 +722,7 @@ public class GameHud : MonoBehaviour
         return joystick;
     }
 
+    // 右下角圆形动作按钮（出拳 / 跳跃）。
     MobileActionButton BuildActionButton(string objectName, string label, Vector2 anchoredPos, float size, Color color, Sprite circle)
     {
         var go = CreateUiObject(objectName, transform);
@@ -716,6 +753,7 @@ public class GameHud : MonoBehaviour
         return button;
     }
 
+    // 场景没有 EventSystem 时补一个 Input System 模块。
     static void EnsureEventSystem()
     {
         if (Object.FindFirstObjectByType<EventSystem>() != null)
@@ -726,6 +764,7 @@ public class GameHud : MonoBehaviour
         module.AssignDefaultActions();
     }
 
+    // 优先用中文字体，找不到再退回内置字体。
     static Font ResolveUiFont(int size)
     {
         Font osFont = Font.CreateDynamicFontFromOSFont(
@@ -737,6 +776,7 @@ public class GameHud : MonoBehaviour
         return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
     }
 
+    // 创建带 RectTransform 的 UI 子物体。
     static GameObject CreateUiObject(string objectName, Transform parent)
     {
         var go = new GameObject(objectName, typeof(RectTransform));
@@ -744,6 +784,7 @@ public class GameHud : MonoBehaviour
         return go;
     }
 
+    // 把 RectTransform 拉满父节点。
     static void Stretch(RectTransform rt)
     {
         rt.anchorMin = Vector2.zero;
@@ -754,8 +795,10 @@ public class GameHud : MonoBehaviour
     }
 }
 
+// 程序生成简单 UI 贴图：圆、白块、金币 / 骷髅 / 心形图标。
 static class UiSprites
 {
+    // 生成带抗锯齿边缘的白色圆形 Sprite。
     public static Sprite Circle(int size)
     {
         var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
@@ -777,6 +820,7 @@ static class UiSprites
         return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
     }
 
+    // 生成 4x4 纯白 Sprite，用作 UI 填充底图。
     public static Sprite White()
     {
         var texture = new Texture2D(4, 4, TextureFormat.RGBA32, false);
@@ -791,6 +835,7 @@ static class UiSprites
         return Sprite.Create(texture, new Rect(0f, 0f, 4, 4), new Vector2(0.5f, 0.5f), 4f);
     }
 
+    // 画一枚金色硬币图标。
     public static Sprite Coin()
     {
         return RasterIcon(64, (x, y, center, radius) =>
@@ -804,6 +849,7 @@ static class UiSprites
         });
     }
 
+    // 画一枚精英骷髅图标。
     public static Sprite EliteSkull()
     {
         return RasterIcon(64, (x, y, center, radius) =>
@@ -820,6 +866,7 @@ static class UiSprites
         });
     }
 
+    // 画一枚心形体力图标。
     public static Sprite Heart()
     {
         return RasterIcon(64, (x, y, center, radius) =>
@@ -833,6 +880,7 @@ static class UiSprites
         });
     }
 
+    // 按像素回调光栅化一张方形图标。
     static Sprite RasterIcon(int size, System.Func<int, int, Vector2, float, Color> sample)
     {
         var texture = new Texture2D(size, size, TextureFormat.RGBA32, false);

@@ -1,5 +1,8 @@
 using UnityEngine;
 
+/// <summary>
+/// 兔子被玩家看见后逃跑，倒计时结束由老鹰叼走飞离并销毁。
+/// </summary>
 [RequireComponent(typeof(CharacterActionPlayer))]
 public sealed class RabbitEagleHunt : MonoBehaviour
 {
@@ -37,12 +40,14 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         Carry
     }
 
+    /// <summary>外部注入老鹰物体并解析其动作组件。</summary>
     public void BindEagle(GameObject eagleObject)
     {
         eagle = eagleObject;
         ResolveEagle();
     }
 
+    /// <summary>缓存兔子组件，保证视野半径下限，并解析老鹰。</summary>
     void Awake()
     {
         _rabbitActions = GetComponent<CharacterActionPlayer>();
@@ -51,6 +56,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         ResolveEagle();
     }
 
+    /// <summary>开局找玩家，老鹰和兔子都播 Idle。</summary>
     void Start()
     {
         _hero = FindAnyObjectByType<HeroController>();
@@ -60,6 +66,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         PlayRabbit("Idle");
     }
 
+    /// <summary>按当前阶段更新待机、逃跑或被叼走。</summary>
     void Update()
     {
         if (_hero == null)
@@ -79,12 +86,14 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         }
     }
 
+    /// <summary>逃跑或被叼走时，在 LateUpdate 里让老鹰跟上兔子。</summary>
     void LateUpdate()
     {
         if (_phase == Phase.Flee || _phase == Phase.Carry)
             UpdateEagleFollow();
     }
 
+    /// <summary>找到老鹰，解开父节点，并关掉根运动。</summary>
     void ResolveEagle()
     {
         if (eagle == null)
@@ -105,6 +114,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
             animator.applyRootMotion = false;
     }
 
+    /// <summary>待机：兔子原地 Idle，玩家看见后开始狩猎。</summary>
     void UpdateIdle()
     {
         ApplyRabbitMove(Vector3.zero, false);
@@ -115,6 +125,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
             BeginHunt();
     }
 
+    /// <summary>进入逃跑：记抓取倒计时，并让兔子跑、老鹰飞。</summary>
     void BeginHunt()
     {
         _phase = Phase.Flee;
@@ -127,6 +138,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         PlayEagle("Fly", true);
     }
 
+    /// <summary>逃跑：到时被叼走，遇水弹开，否则朝逃离点移动。</summary>
     void UpdateFlee()
     {
         if (Time.time >= _huntEndTime)
@@ -135,6 +147,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
             return;
         }
 
+        // 踩水时立刻改逃离方向，避免继续往水里冲
         if (WaterProbe.IsInWater(transform.position))
         {
             BounceOffWater(transform.forward);
@@ -171,6 +184,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         }
     }
 
+    /// <summary>实际位移远低于预期时，侧向改道绕开卡住点。</summary>
     void CheckStuck(Vector3 intendedDirection, float speed)
     {
         if (Time.time < _stuckSampleTime + stuckCheckInterval)
@@ -192,6 +206,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         ChooseFleePoint(true);
     }
 
+    /// <summary>碰到水后取逃离方向，并短暂锁定该方向。</summary>
     void BounceOffWater(Vector3 incoming)
     {
         _escapeDir = WaterProbe.EscapeDirection(transform.position, incoming);
@@ -202,6 +217,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         Face(_escapeDir);
     }
 
+    /// <summary>老鹰飞到兔子斜上方跟随点，并朝目标点转向。</summary>
     void UpdateEagleFollow()
     {
         if (_eagleTransform == null)
@@ -229,6 +245,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         PlayEagle("Fly");
     }
 
+    /// <summary>算出老鹰相对兔子的侧向跟随点。</summary>
     Vector3 FollowPoint()
     {
         Vector3 lateral = Quaternion.Euler(0f, Mathf.Sin(_wingAngle * Mathf.Deg2Rad) * 18f, 0f) *
@@ -238,6 +255,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
                lateral.normalized * followDistance;
     }
 
+    /// <summary>把兔子挂到老鹰脚下，关掉角色控制器。</summary>
     void BeginCarry()
     {
         _phase = Phase.Carry;
@@ -254,6 +272,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         PlayEagle("Fly", true);
     }
 
+    /// <summary>老鹰带着兔子飞走，时间到后销毁两者。</summary>
     void UpdateCarry()
     {
         if (_eagleTransform != null)
@@ -275,6 +294,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         Destroy(gameObject);
     }
 
+    /// <summary>选一个不踩水、不穿水的逃离落点。</summary>
     void ChooseFleePoint(bool fromWater)
     {
         _nextFleeRepath = Time.time + (fromWater ? 1.1f : 0.7f);
@@ -287,6 +307,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
             heading = transform.forward;
         heading.Normalize();
 
+        // 左右交替扫角度，找一块干燥地面
         Vector3 side = Vector3.Cross(Vector3.up, heading);
         int attempts = fromWater ? 20 : 16;
         for (int i = 0; i < attempts; i++)
@@ -313,6 +334,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         _fleePoint.y = origin.y;
     }
 
+    /// <summary>水平方向上远离玩家；过近则沿自身朝前。</summary>
     Vector3 AwayFromHero()
     {
         if (_hero == null)
@@ -322,6 +344,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         return away.sqrMagnitude < 0.2f ? transform.forward : away.normalized;
     }
 
+    /// <summary>先采样地形高度，失败再向下射线找地面。</summary>
     Vector3 SampleGround(Vector3 xz)
     {
         foreach (Terrain terrain in Terrain.activeTerrains)
@@ -341,6 +364,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         return xz;
     }
 
+    /// <summary>玩家活着且兔子在主相机视野与距离内。</summary>
     bool PlayerSeesRabbit()
     {
         if (_hero == null || Camera.main == null)
@@ -358,6 +382,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
                viewport.y < 1f;
     }
 
+    /// <summary>取相机水平朝前，作为老鹰飞离方向。</summary>
     Vector3 SpawnForward()
     {
         if (Camera.main == null)
@@ -367,6 +392,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         return forward.sqrMagnitude < 0.01f ? Vector3.forward : forward.normalized;
     }
 
+    /// <summary>把兔子转向指定水平方向。</summary>
     void Face(Vector3 direction)
     {
         if (direction.sqrMagnitude < 0.0001f)
@@ -378,6 +404,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
             540f * Time.deltaTime);
     }
 
+    /// <summary>带重力移动兔子，并尽量避免走进或更深地踏入水里。</summary>
     bool ApplyRabbitMove(Vector3 planar, bool escapingWater)
     {
         if (_rabbitController == null || !_rabbitController.enabled)
@@ -395,6 +422,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
             return false;
         }
 
+        // 正在脱困时，若下一步更深地踩水就先刹水平速度
         if (nextInWater && escapingWater)
         {
             float now = PlanarWaterPenalty(transform.position);
@@ -411,11 +439,13 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         return true;
     }
 
+    /// <summary>点在水里记 1，否则记 0，用来比较踩水深浅。</summary>
     static float PlanarWaterPenalty(Vector3 point)
     {
         return WaterProbe.IsInWater(point) ? 1f : 0f;
     }
 
+    /// <summary>接地时压住下落速度，否则施加重力。</summary>
     void ApplyGravity(ref Vector3 planar)
     {
         if (_rabbitController.isGrounded && _verticalSpeed < 0f)
@@ -425,6 +455,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
         planar.y = _verticalSpeed;
     }
 
+    /// <summary>配置里有该动作才让兔子播放。</summary>
     void PlayRabbit(string actionId, bool restart = false)
     {
         if (_rabbitActions != null &&
@@ -433,6 +464,7 @@ public sealed class RabbitEagleHunt : MonoBehaviour
             _rabbitActions.Play(actionId, restart);
     }
 
+    /// <summary>配置里有该动作才让老鹰播放。</summary>
     void PlayEagle(string actionId, bool restart = false)
     {
         if (_eagleActions != null &&

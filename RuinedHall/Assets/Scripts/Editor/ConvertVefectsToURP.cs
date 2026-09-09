@@ -3,13 +3,14 @@ using UnityEditor;
 using UnityEngine;
 
 /// <summary>
-/// Converts Vefects / Vexa Built-in and Amplify materials to URP Lit.
+/// 把 Vefects / Vexa 的 Built-in、Amplify 材质改成 URP Lit。
 /// </summary>
 public static class ConvertVefectsToURP
 {
     const string FlagPath = "Temp/ConvertVefectsToURP.flag";
     const string Root = "Assets/Vefects";
 
+    /// <summary>编辑器启动后监听转换 flag。</summary>
     [InitializeOnLoadMethod]
     static void Register()
     {
@@ -17,6 +18,7 @@ public static class ConvertVefectsToURP
         EditorApplication.update += Tick;
     }
 
+    /// <summary>发现 flag 就执行一次转换。</summary>
     static void Tick()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -28,6 +30,7 @@ public static class ConvertVefectsToURP
         Convert();
     }
 
+    /// <summary>遍历 Assets/Vefects 下材质，映射贴图后换成 URP Lit。</summary>
     [MenuItem("Build/Convert Vefects Materials to URP")]
     public static void Convert()
     {
@@ -47,6 +50,7 @@ public static class ConvertVefectsToURP
             if (mat == null)
                 continue;
 
+            // 按 Vefects / Amplify 常见属性名找贴图，再换成 URP Lit。
             Texture albedo = FirstTexture(mat, "_BaseColorTexture", "_MultTexture", "_MainTex", "_BaseMap");
             Texture normal = FirstTexture(mat, "_NormalTexture", "_BumpMap");
             Texture metallic = FirstTexture(mat, "_MetallicTexture", "_MetallicGlossMap");
@@ -71,6 +75,7 @@ public static class ConvertVefectsToURP
             mat.SetOverrideTag("RenderType", "Opaque");
             mat.renderQueue = -1;
 
+            // 法线 / 金属 / AO 有贴图才写入并开 keyword。
             if (normal != null)
             {
                 mat.SetTexture("_BumpMap", normal);
@@ -97,6 +102,7 @@ public static class ConvertVefectsToURP
         Debug.Log("ConvertVefectsToURP: converted " + count + " materials under " + Root + " to URP Lit.");
     }
 
+    /// <summary>按候选属性名依次找第一张有效贴图。</summary>
     static Texture FirstTexture(Material mat, params string[] names)
     {
         foreach (string name in names)
@@ -109,6 +115,7 @@ public static class ConvertVefectsToURP
         return null;
     }
 
+    /// <summary>先读当前 shader 属性，没有再从 SavedProperties 里找贴图。</summary>
     static Texture ReadSavedTexture(Material mat, string property)
     {
         if (mat.HasProperty(property))
@@ -137,6 +144,7 @@ public static class ConvertVefectsToURP
         return null;
     }
 
+    /// <summary>先读当前颜色，没有再从 SavedProperties 里找。</summary>
     static Color ReadSavedColor(Material mat, string property, Color fallback)
     {
         if (mat.HasProperty(property))

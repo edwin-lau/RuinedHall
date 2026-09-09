@@ -1,7 +1,11 @@
 using UnityEngine;
 
+/// <summary>
+/// 按网格包围盒适配 CharacterController，并把脚贴到地面或抬出地面。
+/// </summary>
 public static class CharacterBodyFit
 {
+    /// <summary>返回角色在世界空间中的身高。</summary>
     public static float WorldHeight(Transform root)
     {
         if (root == null)
@@ -16,6 +20,7 @@ public static class CharacterBodyFit
         return Mathf.Max(0.2f, bounds.size.y);
     }
 
+    /// <summary>按网格包围盒写入 CharacterController 的身高、半径与中心。</summary>
     public static void Apply(CharacterController controller, Transform root)
     {
         if (controller == null || root == null)
@@ -28,6 +33,7 @@ public static class CharacterBodyFit
         float localBottom = (bounds.min.y - root.position.y) / sy;
         float radius = Mathf.Clamp(localHeight * 0.16f, 0.06f, localHeight * 0.28f);
 
+        // 用局部身高写胶囊体，避免缩放把碰撞体拉飞。
         controller.height = localHeight;
         controller.radius = radius;
         controller.center = new Vector3(0f, localBottom + localHeight * 0.5f, 0f);
@@ -37,11 +43,13 @@ public static class CharacterBodyFit
         controller.stepOffset = Mathf.Min(localHeight * 0.18f, radius * 1.8f);
     }
 
+    /// <summary>测量所有可见网格的世界包围盒。</summary>
     public static bool TryMeasureWorldBounds(Transform root, out Bounds bounds)
     {
         return TryMeasureBounds(root, false, out bounds);
     }
 
+    /// <summary>优先用蒙皮网格测包围盒，失败再退回全部网格。</summary>
     public static bool TryMeasureBodyBounds(Transform root, out Bounds bounds)
     {
         if (TryMeasureBounds(root, true, out bounds))
@@ -49,6 +57,7 @@ public static class CharacterBodyFit
         return TryMeasureBounds(root, false, out bounds);
     }
 
+    // 合并子网格包围盒；skinnedOnly 时只收蒙皮网格。
     static bool TryMeasureBounds(Transform root, bool skinnedOnly, out Bounds bounds)
     {
         bounds = new Bounds(root.position, Vector3.zero);
@@ -76,6 +85,7 @@ public static class CharacterBodyFit
         return found && bounds.size.y > 0.05f;
     }
 
+    /// <summary>把角色脚底对齐到地面，必要时再按包围盒抬高。</summary>
     public static void SnapFeetToGround(Transform root)
     {
         if (root == null)
@@ -93,6 +103,7 @@ public static class CharacterBodyFit
         if (controller != null)
             controller.enabled = false;
 
+        // 先按脚点对齐地面，再按包围盒补一次，避免网格仍陷地。
         float footY = LowestContactY(root);
         root.position += Vector3.up * (ground.y - footY);
 
@@ -107,6 +118,7 @@ public static class CharacterBodyFit
             controller.enabled = wasEnabled;
     }
 
+    /// <summary>脚骨与身体包围盒中更低的接触高度。</summary>
     public static float LowestContactY(Transform root)
     {
         float y = LowestFootBoneY(root);
@@ -117,6 +129,7 @@ public static class CharacterBodyFit
         return root.position.y;
     }
 
+    /// <summary>人形脚/脚趾骨骼与按名称匹配的脚点中的最低 Y。</summary>
     public static float LowestFootBoneY(Transform root)
     {
         float y = float.PositiveInfinity;
@@ -133,6 +146,7 @@ public static class CharacterBodyFit
         return y;
     }
 
+    /// <summary>若脚陷进地面则向上抬出。</summary>
     public static void LiftFeetOutOfGround(CharacterController controller, Transform root)
     {
         if (root == null)
@@ -154,6 +168,7 @@ public static class CharacterBodyFit
             root.position += Vector3.up * bury;
     }
 
+    // 按 toe/foot/ankle 名称找最低脚点。
     static float LowestNamedFootY(Transform root)
     {
         float y = float.PositiveInfinity;
@@ -172,6 +187,7 @@ public static class CharacterBodyFit
         return y;
     }
 
+    // 把指定人形骨骼的世界 Y 纳入最低值。
     static void ConsiderBone(Animator animator, HumanBodyBones bone, ref float y)
     {
         Transform t = animator.GetBoneTransform(bone);
@@ -179,9 +195,11 @@ public static class CharacterBodyFit
             y = Mathf.Min(y, t.position.y);
     }
 
+    /// <summary>向下射线找地面，忽略自身碰撞，失败再采样地形。</summary>
     public static bool TryHitGround(Vector3 xz, Transform ignore, out Vector3 point)
     {
         point = xz;
+        // 从上往下打射线，取最高的非自身碰撞点当地面。
         RaycastHit[] hits = Physics.RaycastAll(
             xz + Vector3.up * 40f,
             Vector3.down,
@@ -206,6 +224,7 @@ public static class CharacterBodyFit
         if (found)
             return true;
 
+        // 射线未命中时，用地形高度作为地面。
         foreach (Terrain terrain in Terrain.activeTerrains)
         {
             if (terrain == null || terrain.terrainData == null)

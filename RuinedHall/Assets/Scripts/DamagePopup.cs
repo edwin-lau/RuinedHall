@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// 世界空间伤害数字，向上飘并淡出。
+/// </summary>
 public sealed class DamagePopup : MonoBehaviour
 {
     const float Lifetime = 0.7f;
@@ -10,6 +13,7 @@ public sealed class DamagePopup : MonoBehaviour
     float _born;
     Vector3 _origin;
 
+    /// <summary>在世界坐标生成一条「-伤害」飘字。</summary>
     public static void Spawn(Vector3 worldPoint, int amount)
     {
         if (amount <= 0)
@@ -20,6 +24,7 @@ public sealed class DamagePopup : MonoBehaviour
         popup.Build(worldPoint, amount);
     }
 
+    /// <summary>搭 WorldSpace Canvas 和文字样式。</summary>
     void Build(Vector3 worldPoint, int amount)
     {
         _origin = worldPoint + Vector3.up * 0.15f;
@@ -58,6 +63,7 @@ public sealed class DamagePopup : MonoBehaviour
         transform.position = _origin;
     }
 
+    /// <summary>上升、淡出，并始终朝向相机。</summary>
     void LateUpdate()
     {
         float t = (Time.time - _born) / Lifetime;

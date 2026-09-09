@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
 using UnityEngine.UI;
 
+// Sidekick 换装预览 HUD：快捷套装、体型滑条与各槽位部件按钮。
 public class SidekickWardrobeHud : MonoBehaviour
 {
     SidekickWardrobe _wardrobe;
@@ -14,6 +15,7 @@ public class SidekickWardrobeHud : MonoBehaviour
     static readonly Color Equipped = new Color(0.78f, 0.52f, 0.16f, 0.96f);
     static readonly Color DefaultWorn = new Color(0.24f, 0.32f, 0.4f, 0.94f);
 
+    // 创建 Overlay Canvas 并立刻拼出换装面板。
     public static SidekickWardrobeHud Create(SidekickWardrobe wardrobe)
     {
         EnsureEventSystem();
@@ -41,17 +43,20 @@ public class SidekickWardrobeHud : MonoBehaviour
         return hud;
     }
 
+    // 启用时重新订阅衣柜变化。
     void OnEnable()
     {
         BindWardrobe();
     }
 
+    // 停用时取消衣柜变化订阅。
     void OnDisable()
     {
         if (_wardrobe != null)
             _wardrobe.Changed -= Refresh;
     }
 
+    // 订阅衣柜 Changed，先解绑再绑以免重复。
     void BindWardrobe()
     {
         if (_wardrobe == null)
@@ -60,11 +65,13 @@ public class SidekickWardrobeHud : MonoBehaviour
         _wardrobe.Changed += Refresh;
     }
 
+    // 拼出左侧面板：标题、快捷套装、体型滑条、槽位列表与保存按钮。
     void Build()
     {
         _white = WhiteSprite();
         Font font = ResolveFont(28);
 
+        // 左侧半透明面板与标题
         var panel = Create("Panel", transform);
         var panelRt = panel.GetComponent<RectTransform>();
         panelRt.anchorMin = new Vector2(0f, 0f);
@@ -98,6 +105,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         BuildQuickRow(panel.transform, font);
         BuildBodySliders(panel.transform, font);
 
+        // 可滚动的槽位部件列表
         var scrollGo = Create("Scroll", panel.transform);
         var scrollRt = scrollGo.GetComponent<RectTransform>();
         scrollRt.anchorMin = new Vector2(0f, 0f);
@@ -143,6 +151,7 @@ public class SidekickWardrobeHud : MonoBehaviour
             BuildSlotSection(content.transform, slot, parts, font);
         }
 
+        // 底部保存到正式关卡
         var save = Create("SaveToGame", panel.transform);
         var saveRt = save.GetComponent<RectTransform>();
         saveRt.anchorMin = new Vector2(0f, 0f);
@@ -169,6 +178,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         Refresh();
     }
 
+    // 顶部快捷套装按钮行。
     void BuildQuickRow(Transform parent, Font font)
     {
         var row = Create("Quick", parent);
@@ -192,6 +202,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         MakeQuick(row.transform, "全部还原", () => _wardrobe.RestoreAll(), font);
     }
 
+    // 创建一个快捷套装按钮。
     void MakeQuick(Transform parent, string label, UnityEngine.Events.UnityAction action, Font font)
     {
         var go = Create(label, parent);
@@ -207,6 +218,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         text.font = font;
     }
 
+    // 脸型按钮与刚柔 / 瘦 / 壮 / 肌肉滑条。
     void BuildBodySliders(Transform parent, Font font)
     {
         var box = Create("Body", parent);
@@ -275,6 +287,7 @@ public class SidekickWardrobeHud : MonoBehaviour
             value => _wardrobe.SetBody(_wardrobe.Skinny, _wardrobe.Heavy, value));
     }
 
+    // 创建一条整数步进的体型滑条。
     void MakeSlider(Transform parent, string label, float min, float max, float value, Font font, System.Action<float> apply)
     {
         var row = Create(label, parent);
@@ -347,6 +360,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         });
     }
 
+    // 为一个槽位创建标题和两列部件按钮网格。
     void BuildSlotSection(Transform parent, string slot, IReadOnlyList<WardrobePart> parts, Font font)
     {
         var section = Create("Slot_" + slot, parent);
@@ -395,6 +409,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         }
     }
 
+    // 按当前装备高亮按钮：默认件用蓝灰，自定义件用金色。
     void Refresh()
     {
         if (_wardrobe == null)
@@ -417,6 +432,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         }
     }
 
+    // 场景没有 EventSystem 时补一个 Input System 模块。
     static void EnsureEventSystem()
     {
         if (FindFirstObjectByType<EventSystem>() != null)
@@ -426,6 +442,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         eventGo.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();
     }
 
+    // 创建带 RectTransform 的 UI 子物体。
     static GameObject Create(string objectName, Transform parent)
     {
         var go = new GameObject(objectName, typeof(RectTransform));
@@ -433,6 +450,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         return go;
     }
 
+    // 创建一段不接收射线的文字。
     Text CreateText(Transform parent, string objectName, string value, int size, FontStyle style)
     {
         var go = Create(objectName, parent);
@@ -446,6 +464,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         return text;
     }
 
+    // 把 RectTransform 拉满父节点。
     static void Stretch(RectTransform rt)
     {
         rt.anchorMin = Vector2.zero;
@@ -454,6 +473,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         rt.offsetMax = Vector2.zero;
     }
 
+    // 优先用中文字体，找不到再退回内置字体。
     static Font ResolveFont(int size)
     {
         Font osFont = Font.CreateDynamicFontFromOSFont(
@@ -462,6 +482,7 @@ public class SidekickWardrobeHud : MonoBehaviour
         return osFont != null ? osFont : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
     }
 
+    // 生成 4x4 纯白 Sprite，用作按钮底图。
     static Sprite WhiteSprite()
     {
         var texture = new Texture2D(4, 4, TextureFormat.RGBA32, false);

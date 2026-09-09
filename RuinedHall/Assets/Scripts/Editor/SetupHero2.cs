@@ -5,8 +5,8 @@ using UnityEditor.Animations;
 using UnityEngine;
 
 /// <summary>
-/// Configures hero2 (Character_Elf + Mixamo anims) as the playable hero:
-/// Humanoid retarget, Hero2.controller, Hero2 prefab, scene wiring.
+/// 把 hero2（Character_Elf + Mixamo 动画）配成可玩主角：
+/// Humanoid 重定向、Hero2.controller、Hero2 预制体，以及场景接线。
 /// </summary>
 public static class SetupHero2
 {
@@ -34,8 +34,12 @@ public static class SetupHero2
         ("death.fbx", "Death", false),
         ("Jump/WalkJump.fbx", "WalkJump", false),
         ("Jump/RunJump.fbx", "RunJump", false),
+        ("Jump/Fall.fbx", "Fall", true),
+        ("Jump/Landing.fbx", "Landing", false),
+        ("Jump/JumpStart.fbx", "JumpStart", false),
     };
 
+    /// <summary>编辑器加载时挂上每帧检测标记文件的回调。</summary>
     [InitializeOnLoadMethod]
     static void Register()
     {
@@ -43,6 +47,7 @@ public static class SetupHero2
         EditorApplication.update += Tick;
     }
 
+    /// <summary>看到标记文件后重导动画或执行完整 Setup。</summary>
     static void Tick()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -76,6 +81,7 @@ public static class SetupHero2
         }
     }
 
+    /// <summary>只按 Humanoid 导入动画，并接到已有 Hero2.controller。</summary>
     [MenuItem("Build/Configure Hero2 Animation Imports")]
     public static void ConfigureImportsOnly()
     {
@@ -107,6 +113,7 @@ public static class SetupHero2
         Debug.Log("Hero2 动画已按 Humanoid 导入，并接到 Hero2.controller。");
     }
 
+    /// <summary>完整流程：导入动画、建控制器和预制体，并放进场景。</summary>
     [MenuItem("Build/Setup Hero2 As Player")]
     public static void Apply()
     {
@@ -124,8 +131,10 @@ public static class SetupHero2
         Debug.Log("SetupHero2 OK: controller + prefab ready, scene uses hero2 as player.");
     }
 
+    /// <summary>把 Elf 网格和 Mixamo FBX 都设成 Humanoid，并配置各片段循环与根运动。</summary>
     static void ConfigureAnimationImports()
     {
+        // 先拿 Elf 的 Humanoid Avatar；没有就改导入设置再读一次
         Avatar sourceAvatar = null;
         foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(ElfMesh))
         {
@@ -159,6 +168,7 @@ public static class SetupHero2
         if (sourceAvatar == null)
             throw new System.Exception("Could not load Humanoid Avatar from Elf_Mesh.FBX");
 
+        // 逐个 Mixamo FBX：Humanoid + CreateFromThisModel，并写循环/根运动
         foreach (var (fbx, state, loop) in Clips)
         {
             string path = AnimDir + "/" + fbx;
@@ -169,14 +179,14 @@ public static class SetupHero2
                 continue;
             }
 
-            // Must NOT CopyFromOther(Elf) — Mixamo ≠ Elf bone mapping → Rig Error, silent T-pose.
+            // 不能 CopyFromOther(Elf)：Mixamo 骨骼映射不同，会 Rig Error 后静默 T-pose。
             importer.animationType = ModelImporterAnimationType.Human;
             importer.avatarSetup = ModelImporterAvatarSetup.CreateFromThisModel;
             importer.sourceAvatar = null;
             importer.importAnimation = true;
             importer.optimizeGameObjects = false;
 
-            // Force via SerializedObject — plain field assign sometimes leaves stale CopyFromOther in .meta.
+            // 用 SerializedObject 强制写入，普通字段赋值有时会留下旧的 CopyFromOther。
             var so = new SerializedObject(importer);
             so.FindProperty("m_HumanoidOversampling").intValue = 1;
             SerializedProperty avatarSetupProp = so.FindProperty("m_AvatarSetup");
@@ -234,6 +244,7 @@ public static class SetupHero2
         }
     }
 
+    /// <summary>按状态名加载片段，找不到则退回 FBX 里第一条非预览剪辑。</summary>
     static AnimationClip TryLoadNamedClip(string fbx, string state)
     {
         string path = AnimDir + "/" + fbx;
@@ -253,6 +264,7 @@ public static class SetupHero2
         return clip;
     }
 
+    /// <summary>加载指定片段，缺失则抛异常。</summary>
     static AnimationClip LoadNamedClip(string fbx, string state)
     {
         AnimationClip clip = TryLoadNamedClip(fbx, state);
@@ -261,6 +273,7 @@ public static class SetupHero2
         return clip;
     }
 
+    /// <summary>在控制器里补齐受击、连打、死亡和跳跃状态。</summary>
     static void EnsureCombatStates(AnimatorController controller)
     {
         if (controller == null || controller.layers.Length == 0)
@@ -275,8 +288,12 @@ public static class SetupHero2
         EnsureState(sm, "Death", TryLoadNamedClip("death.fbx", "Death"), new Vector3(520, 260, 0));
         EnsureState(sm, "WalkJump", TryLoadNamedClip("Jump/WalkJump.fbx", "WalkJump"), new Vector3(520, 460, 0));
         EnsureState(sm, "RunJump", TryLoadNamedClip("Jump/RunJump.fbx", "RunJump"), new Vector3(740, 460, 0));
+        EnsureState(sm, "Fall", TryLoadNamedClip("Jump/Fall.fbx", "Fall"), new Vector3(520, 560, 0));
+        EnsureState(sm, "Landing", TryLoadNamedClip("Jump/Landing.fbx", "Landing"), new Vector3(740, 560, 0));
+        EnsureState(sm, "JumpStart", TryLoadNamedClip("Jump/JumpStart.fbx", "JumpStart"), new Vector3(300, 460, 0));
     }
 
+    /// <summary>没有该状态就新建，有片段则赋上 motion。</summary>
     static void EnsureState(AnimatorStateMachine sm, string name, AnimationClip clip, Vector3 position)
     {
         AnimatorState found = null;
@@ -295,6 +312,7 @@ public static class SetupHero2
             found.motion = clip;
     }
 
+    /// <summary>重建 Hero2.controller，写入基础移动/攻击状态。</summary>
     static AnimatorController BuildController()
     {
         AnimationClip idle = LoadNamedClip("idle.fbx", "Idle");
@@ -312,7 +330,7 @@ public static class SetupHero2
         var controller = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
         AnimatorStateMachine sm = controller.layers[0].stateMachine;
 
-        // Clear default empty state if any
+        // 清掉默认空状态
         foreach (ChildAnimatorState existing in sm.states.ToArray())
             sm.RemoveState(existing.state);
 
@@ -335,6 +353,7 @@ public static class SetupHero2
         return controller;
     }
 
+    /// <summary>用 Elf 预制体生成 hero2，挂 Animator、控制器和 HeroController。</summary>
     static GameObject BuildHero2Prefab(RuntimeAnimatorController controller)
     {
         GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(ElfPrefab);
@@ -355,6 +374,7 @@ public static class SetupHero2
         instance.name = "hero2";
         instance.transform.localScale = Vector3.one;
 
+        // 绑 Humanoid Avatar 和控制器，关掉根运动
         var animator = instance.GetComponent<Animator>();
         if (animator == null)
             animator = instance.AddComponent<Animator>();
@@ -372,6 +392,9 @@ public static class SetupHero2
         if (instance.GetComponent<HeroController>() == null)
             instance.AddComponent<HeroController>();
 
+        if (instance.GetComponent<HeroLocomotionFeel>() == null)
+            instance.AddComponent<HeroLocomotionFeel>();
+
         try
         {
             instance.tag = "Player";
@@ -388,6 +411,7 @@ public static class SetupHero2
         return prefab;
     }
 
+    /// <summary>打开场景，用 hero2 替换旧 hero 并保存。</summary>
     static void PlaceInScene(GameObject heroPrefab)
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode)
@@ -399,6 +423,7 @@ public static class SetupHero2
         var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene(ScenePath);
         GameObject oldHero = GameObject.Find("hero");
 
+        // 有旧 hero 就沿用其位置，并改名藏起来
         Vector3 spawn = new Vector3(237.3f, 14.5f, 30f);
         Quaternion rot = Quaternion.identity;
         if (oldHero != null)
@@ -409,6 +434,7 @@ public static class SetupHero2
             oldHero.name = "hero_old";
         }
 
+        // 场景里已有 hero2 先删掉，再按旧 hero 位置放新的。
         foreach (GameObject root in scene.GetRootGameObjects())
         {
             if (root == null)
@@ -429,10 +455,11 @@ public static class SetupHero2
         UnityEditor.SceneManagement.EditorSceneManager.SaveScene(scene);
     }
 
+    /// <summary>把 GameplayBootstrap 的主角名和 Animator 指到 hero2。</summary>
     static void WireGameplayBootstrap(RuntimeAnimatorController controller)
     {
         string[] guids = AssetDatabase.FindAssets("t:Scene");
-        // Already placed in HelpOthers; update bootstrap serialized fields via scene objects.
+        // 场景里已放好 hero2，这里只改 bootstrap 序列化字段。
         foreach (GameObject root in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
         {
             var bootstrap = root.GetComponent<GameplayBootstrap>();

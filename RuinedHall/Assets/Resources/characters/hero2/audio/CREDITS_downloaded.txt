@@ -1,0 +1,24 @@
+Downloaded SFX (free for this game). Preview in Unity, then pick which clip to wire.
+
+Kenney Impact Sounds + RPG Audio — CC0
+https://kenney.nl/assets/impact-sounds
+https://kenney.nl/assets/rpg-audio
+  hit_stone/kenney_*.ogg
+  hit_wood/kenney_*.ogg
+  hit_flesh/kenney_*.ogg
+  hit_metal/kenney_*.ogg
+  grass_walk/kenney_grass_walk_*.ogg
+  grass_run/kenney_grass_run_*.ogg
+  roll/kenney_cloth_*.ogg
+
+Mixkit License (free personal/commercial)
+https://mixkit.co/license
+  hit_* / mixkit_*.wav
+  grass_* / mixkit_*.wav
+  jump/mixkit_player_jump.wav, mixkit_spin_jump.wav
+  roll/mixkit_*.wav
+
+Also already in this audio folder:
+  jumpland.wav (jump land)
+  PunchEmpty.flac, hitEmpty.wav (whiff)
+  whiff/ (earlier punch-miss pack)

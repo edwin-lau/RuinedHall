@@ -1,19 +1,26 @@
 using UnityEngine;
 
+/// <summary>
+/// 按物体名字给敌人套奖励、AI 习惯和训练木桩等身份。
+/// </summary>
 public static class EnemyIdentity
 {
+    /// <summary>Awake 时调用：名字匹配则改战斗数值/行为。</summary>
     public static void Apply(CharacterCombatAgent agent)
     {
         if (agent == null)
             return;
 
         string name = agent.gameObject.name;
+
+        // 训练木桩：只挨打，不反击。
         if (Matches(name, "thor"))
         {
             agent.ApplyTrainingDummy("肉桩");
             return;
         }
 
+        // 营地公鸡：少量金币，啄地待机。
         if (Matches(name, "rooster", "chicken"))
         {
             agent.ApplyRewards(false, "", 2);
@@ -24,6 +31,7 @@ public static class EnemyIdentity
             return;
         }
 
+        // 精英石头人：高血高伤。
         if (Matches(name, "golem"))
         {
             agent.ApplyRewards(true, "精英 · 石头人", 15);
@@ -31,6 +39,7 @@ public static class EnemyIdentity
             return;
         }
 
+        // 精英狐猴：中血，跑得快。
         if (Matches(name, "lemur"))
         {
             agent.ApplyRewards(true, "精英 · 狐猴", 8);
@@ -38,6 +47,7 @@ public static class EnemyIdentity
             return;
         }
 
+        // 精英 Triton：远程型，射程更远。
         if (Matches(name, "triton"))
         {
             agent.ApplyRewards(true, "精英 · Triton", 12);
@@ -45,6 +55,7 @@ public static class EnemyIdentity
             return;
         }
 
+        // Skeleton Rogue：破土现身 + 射箭。
         if (Matches(name, "skeleton") && Matches(name, "rogue"))
         {
             agent.ApplyRewards(true, "精英 · Skeleton Rogue", 10);
@@ -58,6 +69,7 @@ public static class EnemyIdentity
             return;
         }
 
+        // 普通 Rogue 精英。
         if (Matches(name, "rogue"))
         {
             agent.ApplyRewards(true, "精英 · Rogue", 10);
@@ -65,6 +77,7 @@ public static class EnemyIdentity
             return;
         }
 
+        // 母鹿：被打前不主动攻击。
         if (Matches(name, "female", "doe"))
         {
             agent.ApplyRewards(false, "", 4);
@@ -77,6 +90,7 @@ public static class EnemyIdentity
             return;
         }
 
+        // 公鹿：攻击时冲锋。
         if (Matches(name, "deer", "stag"))
         {
             agent.ApplyRewards(false, "", 6);
@@ -89,10 +103,12 @@ public static class EnemyIdentity
             return;
         }
 
+        // 没匹配到具体种类时，至少给一份默认金币。
         if (agent.GoldReward <= 0)
             agent.ApplyRewards(agent.IsElite, agent.EliteTitle, 3);
     }
 
+    /// <summary>名字里是否包含任一关键字（忽略大小写）。</summary>
     static bool Matches(string name, params string[] tokens)
     {
         foreach (string token in tokens)

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+// 世界空间血条：跟在角色头顶，面向相机，精英更宽、更黄。
 public sealed class WorldHealthBar : MonoBehaviour
 {
     const float WorldWidth = 1.35f;
@@ -21,6 +22,7 @@ public sealed class WorldHealthBar : MonoBehaviour
     Transform _cameraTransform;
     bool _elite;
 
+    // 给战斗单位挂血条；已有则复用并重新绑定。
     public static WorldHealthBar Attach(CharacterCombatAgent owner)
     {
         if (owner == null)
@@ -55,6 +57,7 @@ public sealed class WorldHealthBar : MonoBehaviour
         return bar;
     }
 
+    // 订阅血量变化，按是否精英建 UI 并对准头顶。
     public void Bind(CharacterCombatAgent owner)
     {
         if (_owner != null)
@@ -76,6 +79,7 @@ public sealed class WorldHealthBar : MonoBehaviour
         FaceCamera();
     }
 
+    // 隐藏血条并停止跟随。
     public void Hide()
     {
         if (_group != null)
@@ -83,6 +87,7 @@ public sealed class WorldHealthBar : MonoBehaviour
         enabled = false;
     }
 
+    // 显示血条并恢复跟随。
     public void Show()
     {
         enabled = true;
@@ -90,12 +95,14 @@ public sealed class WorldHealthBar : MonoBehaviour
             _group.alpha = 1f;
     }
 
+    // 解绑血量事件。
     void OnDestroy()
     {
         if (_owner != null)
             _owner.HealthChanged -= OnHealthChanged;
     }
 
+    // 每帧跟头顶、朝向相机；主人死亡或丢失则隐藏 / 销毁。
     void LateUpdate()
     {
         if (_owner == null)
@@ -115,6 +122,7 @@ public sealed class WorldHealthBar : MonoBehaviour
         UpdateVisibility();
     }
 
+    // 懒创建世界空间 Canvas：底板、填充、称号与数值。
     void EnsureBuilt()
     {
         if (_fill != null)
@@ -200,6 +208,7 @@ public sealed class WorldHealthBar : MonoBehaviour
         ApplyTitle();
     }
 
+    // 精英显示称号，训练木桩显示“肉桩”。
     void ApplyTitle()
     {
         if (_title == null)
@@ -212,11 +221,13 @@ public sealed class WorldHealthBar : MonoBehaviour
             _title.text = string.IsNullOrWhiteSpace(_owner.EliteTitle) ? "肉桩" : _owner.EliteTitle;
     }
 
+    // 血量变化回调。
     void OnHealthChanged(int current, int max)
     {
         SetHealth(current, max);
     }
 
+    // 刷新填充比例；木桩额外显示数字。
     void SetHealth(int current, int max)
     {
         max = Mathf.Max(1, max);
@@ -231,6 +242,7 @@ public sealed class WorldHealthBar : MonoBehaviour
         }
     }
 
+    // 把血条放到碰撞体头顶上方。
     void AlignToHead()
     {
         Vector3 origin = _owner.transform.position;
@@ -250,11 +262,13 @@ public sealed class WorldHealthBar : MonoBehaviour
         transform.localScale = Vector3.one * (BarWidth() / 100f);
     }
 
+    // 精英用更宽的血条。
     float BarWidth()
     {
         return _elite ? EliteWorldWidth : WorldWidth;
     }
 
+    // 让血条面向主相机。
     void FaceCamera()
     {
         if (_cameraTransform == null && Camera.main != null)
@@ -270,6 +284,7 @@ public sealed class WorldHealthBar : MonoBehaviour
         transform.rotation = _cameraTransform.rotation * Quaternion.Euler(0f, 180f, 0f);
     }
 
+    // 超过可视距离则透明隐藏。
     void UpdateVisibility()
     {
         if (_group == null)
@@ -285,6 +300,7 @@ public sealed class WorldHealthBar : MonoBehaviour
         _group.alpha = distance <= visibleDistance ? 1f : 0f;
     }
 
+    // 把 RectTransform 拉满父节点。
     static void Stretch(RectTransform rt)
     {
         rt.anchorMin = Vector2.zero;

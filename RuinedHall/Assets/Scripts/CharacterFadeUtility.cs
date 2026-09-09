@@ -3,8 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
+/// <summary>
+/// 把角色材质改成透明后按时间淡出，最后销毁物体（尸体消散）。
+/// </summary>
 public static class CharacterFadeUtility
 {
+    /// <summary>淡出期间每帧改 alpha，结束销毁根物体。</summary>
     public static IEnumerator FadeAndDestroy(Transform root, float duration)
     {
         List<FadeMaterial> materials = PrepareMaterials(root);
@@ -22,6 +26,7 @@ public static class CharacterFadeUtility
             Object.Destroy(root.gameObject);
     }
 
+    /// <summary>复制实例材质、关掉阴影，并切到透明渲染。</summary>
     static List<FadeMaterial> PrepareMaterials(Transform root)
     {
         var result = new List<FadeMaterial>();
@@ -40,6 +45,7 @@ public static class CharacterFadeUtility
         return result;
     }
 
+    /// <summary>URP Lit 常见透明参数：Surface=Transparent，标准 Alpha 混合。</summary>
     static void MakeTransparent(Material material)
     {
         if (material.HasProperty("_Surface"))
@@ -59,6 +65,7 @@ public static class CharacterFadeUtility
         material.renderQueue = (int)RenderQueue.Transparent;
     }
 
+    /// <summary>记住原始颜色，只改 alpha 做淡出。</summary>
     readonly struct FadeMaterial
     {
         readonly Material _material;
@@ -67,6 +74,7 @@ public static class CharacterFadeUtility
         readonly bool _hasBaseColor;
         readonly bool _hasLegacyColor;
 
+        /// <summary>记下材质和原始颜色，后面只改 alpha。</summary>
         public FadeMaterial(Material material)
         {
             _material = material;
@@ -76,6 +84,7 @@ public static class CharacterFadeUtility
             _legacyColor = _hasLegacyColor ? material.GetColor("_Color") : Color.white;
         }
 
+        /// <summary>按比例乘在原始 alpha 上。</summary>
         public void SetAlpha(float alpha)
         {
             if (_hasBaseColor)

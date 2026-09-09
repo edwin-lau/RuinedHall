@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
 
+// 衣柜里的一个可选部件：槽位、资源名与界面标签。
 public sealed class WardrobePart
 {
     public string Slot;
@@ -16,6 +17,7 @@ public sealed class WardrobePart
     public string Label;
 }
 
+// Sidekick 换装核心：加载零件库、装备部件、按体型合成可玩角色。
 public class SidekickWardrobe : MonoBehaviour
 {
     const string CharacterName = "Sidekick Character";
@@ -128,15 +130,20 @@ public class SidekickWardrobe : MonoBehaviour
     float _muscles = 28f;
     float _faceBlend;
 
+    // 当前各槽位装备的部件名。
     public IReadOnlyDictionary<string, string> Equipped => _equipped;
+    // 零件库是否已加载并合成过一次角色。
     public bool Ready { get; private set; }
+    // 为真时按预览模式合成（不合并网格、隔离其它身体）。
     public bool IsolatePreview { get; set; }
 
+    // 槽位代码转成中文标签，未知槽位原样返回。
     public static string SlotLabel(string slot)
     {
         return SlotLabels.TryGetValue(slot, out string label) ? label : slot;
     }
 
+    // 返回某槽位下的全部可选部件。
     public IReadOnlyList<WardrobePart> PartsForSlot(string slot)
     {
         return _partsBySlot.TryGetValue(slot, out List<WardrobePart> parts)
@@ -144,6 +151,7 @@ public class SidekickWardrobe : MonoBehaviour
             : Array.Empty<WardrobePart>();
     }
 
+    // 当前装备是否仍是该槽位的默认件。
     public bool IsDefault(string slot)
     {
         _defaults.TryGetValue(slot, out string def);
@@ -151,6 +159,7 @@ public class SidekickWardrobe : MonoBehaviour
         return string.Equals(def ?? "", cur ?? "", StringComparison.Ordinal);
     }
 
+    // 加载 Sidekick 运行时、零件库，并按外观合成角色。
     public async Task Initialize(SidekickLook look = null)
     {
         GameObject model = Resources.Load<GameObject>("Meshes/SK_BaseModel");
@@ -167,6 +176,7 @@ public class SidekickWardrobe : MonoBehaviour
         _runtime.ForceAssignedBaseModel = true;
         await SidekickRuntime.PopulateToolData(_runtime);
 
+        // 预览模式先缓存全部预制体并建目录
         if (IsolatePreview)
         {
             CachePrefabs();
@@ -179,6 +189,7 @@ public class SidekickWardrobe : MonoBehaviour
         }
 
         RememberDefaults();
+        // 优先用传入外观，没有再读盘。
         SidekickLook saved = look ?? SidekickLook.Load();
         if (saved != null)
             ApplyLook(saved, false);
@@ -194,16 +205,19 @@ public class SidekickWardrobe : MonoBehaviour
         Changed?.Invoke();
     }
 
+    // 把当前装备与体型参数打包成可保存外观。
     public SidekickLook CaptureLook()
     {
         return SidekickLook.From(_equipped, _skinny, _heavy, _muscles, _faceBlend);
     }
 
+    // 把当前外观写入存档，供正式关卡加载。
     public void SaveLookForGame()
     {
         CaptureLook().Save();
     }
 
+    // 套用一份外观；rebuild 为假时只改数据不立刻合成。
     public void ApplyLook(SidekickLook look, bool rebuild = true)
     {
         if (look == null)
@@ -221,6 +235,7 @@ public class SidekickWardrobe : MonoBehaviour
         }
     }
 
+    // 把合成角色从衣柜节点上拆下来，交给游戏场景使用。
     public GameObject DetachCharacter()
     {
         GameObject character = _character;
@@ -230,6 +245,7 @@ public class SidekickWardrobe : MonoBehaviour
         return character;
     }
 
+    // 临时建衣柜、按外观合成可玩角色后销毁宿主。
     public static async Task<GameObject> CreatePlayable(SidekickLook look)
     {
         var host = new GameObject("SidekickBuild");
@@ -240,6 +256,7 @@ public class SidekickWardrobe : MonoBehaviour
         return character;
     }
 
+    // 同一部件再点一次则还原默认，否则装备该件。
     public void Toggle(string slot, string partName)
     {
         _equipped.TryGetValue(slot, out string current);
@@ -249,6 +266,7 @@ public class SidekickWardrobe : MonoBehaviour
             Equip(slot, partName);
     }
 
+    // 把某槽位还原成默认件（或清空可选槽）。
     public void Restore(string slot)
     {
         if (_defaults.TryGetValue(slot, out string def) && !string.IsNullOrEmpty(def))
@@ -259,6 +277,7 @@ public class SidekickWardrobe : MonoBehaviour
         Changed?.Invoke();
     }
 
+    // 全部槽位回到默认人体套装。
     public void RestoreAll()
     {
         RememberDefaults();
@@ -266,6 +285,7 @@ public class SidekickWardrobe : MonoBehaviour
         Changed?.Invoke();
     }
 
+    // 按名称前缀给各槽位套上一整套服装。
     public void EquipSet(string namePrefix)
     {
         foreach (KeyValuePair<string, List<WardrobePart>> pair in _partsBySlot)
@@ -285,6 +305,7 @@ public class SidekickWardrobe : MonoBehaviour
         Changed?.Invoke();
     }
 
+    // 给指定槽位装备一个部件并立刻重合成。
     public void Equip(string slot, string partName)
     {
         _equipped[slot] = partName ?? "";
@@ -292,6 +313,7 @@ public class SidekickWardrobe : MonoBehaviour
         Changed?.Invoke();
     }
 
+    // 把 Meshes 下所有带蒙皮的 SK_ 预制体缓存起来。
     void CachePrefabs()
     {
         _prefabs.Clear();
@@ -307,6 +329,7 @@ public class SidekickWardrobe : MonoBehaviour
         }
     }
 
+    // 从运行时零件字典按槽位整理可选列表。
     void BuildCatalog()
     {
         _partsBySlot.Clear();
@@ -347,6 +370,7 @@ public class SidekickWardrobe : MonoBehaviour
             list.Sort((a, b) => string.CompareOrdinal(a.Name, b.Name));
     }
 
+    // 记下默认人体件，必填槽没有默认时用第一件 BASE。
     void RememberDefaults()
     {
         _defaults.Clear();
@@ -381,12 +405,14 @@ public class SidekickWardrobe : MonoBehaviour
         _equipped["09FCHR"] = "";
     }
 
+    // 确保当前装备的每个部件都能解析到预制体。
     void EnsureEquippedPrefabs()
     {
         foreach (KeyValuePair<string, string> pair in _equipped)
             TryRegisterPart(pair.Value);
     }
 
+    // 按名字在零件字典里登记一个部件，找不到则失败。
     bool TryRegisterPart(string name)
     {
         if (string.IsNullOrEmpty(name))
@@ -426,11 +452,16 @@ public class SidekickWardrobe : MonoBehaviour
         return false;
     }
 
+    // 瘦身混合值 0–100。
     public float Skinny => _skinny;
+    // 壮硕混合值 0–100。
     public float Heavy => _heavy;
+    // 肌肉混合值。
     public float Muscles => _muscles;
+    // 脸型刚柔混合值。
     public float FaceBlend => _faceBlend;
 
+    // 设置瘦 / 壮 / 肌肉混合值并重合成。
     public void SetBody(float skinny, float heavy, float muscles)
     {
         _skinny = Mathf.Clamp(skinny, 0f, 100f);
@@ -440,6 +471,7 @@ public class SidekickWardrobe : MonoBehaviour
         Changed?.Invoke();
     }
 
+    // 设置脸型刚柔混合值并重合成。
     public void SetFaceBlend(float value)
     {
         _faceBlend = Mathf.Clamp(value, -100f, 100f);
@@ -447,6 +479,7 @@ public class SidekickWardrobe : MonoBehaviour
         Changed?.Invoke();
     }
 
+    // 换头的同时尽量套上同系列鼻子和眉毛。
     public void EquipFace(string headName)
     {
         if (string.IsNullOrEmpty(headName))
@@ -476,11 +509,13 @@ public class SidekickWardrobe : MonoBehaviour
         Changed?.Invoke();
     }
 
+    // 按当前装备收集蒙皮，销毁旧角色后重新合成。
     void RebuildCharacter()
     {
         if (_runtime == null)
             return;
 
+        // 收集当前装备对应的蒙皮
         var partsToUse = new List<SkinnedMeshRenderer>();
         foreach (KeyValuePair<string, string> pair in _equipped)
         {
@@ -509,6 +544,7 @@ public class SidekickWardrobe : MonoBehaviour
             DestroyBakedPresets();
         ApplyBodyShape();
 
+        // 预览模式不合并网格，方便单独开关部件
         bool combine = !IsolatePreview;
         _character = _runtime.CreateCharacter(
             CharacterName,
@@ -542,6 +578,7 @@ public class SidekickWardrobe : MonoBehaviour
         }
     }
 
+    // 给可玩角色换成 URP Lit，并降低蒙皮开销。
     static void OptimizePlayableCharacter(GameObject character)
     {
         Material playableMat = CreatePlayableLit(Resources.Load<Material>("Materials/M_BaseMaterial"));
@@ -557,6 +594,7 @@ public class SidekickWardrobe : MonoBehaviour
         }
     }
 
+    // 从 Sidekick 贴图做一个 URP Lit 材质，找不到 Shader 则沿用原材质。
     static Material CreatePlayableLit(Material source)
     {
         Shader lit = Shader.Find("Universal Render Pipeline/Lit");
@@ -586,6 +624,7 @@ public class SidekickWardrobe : MonoBehaviour
         return material;
     }
 
+    // 给角色绑上英雄 Animator 并立刻重绑定。
     void BindAnimator(GameObject character)
     {
         Animator animator = character.GetComponent<Animator>();
@@ -602,6 +641,7 @@ public class SidekickWardrobe : MonoBehaviour
         animator.Update(0f);
     }
 
+    // 把瘦 / 壮 / 肌肉 / 脸型混合值写进运行时。
     void ApplyBodyShape()
     {
         if (_runtime == null)
@@ -612,6 +652,7 @@ public class SidekickWardrobe : MonoBehaviour
         _runtime.BodyTypeBlendValue = _faceBlend;
     }
 
+    // 销毁上一次合成的角色。
     void DestroyOldCharacter()
     {
         if (_character != null)
@@ -622,6 +663,7 @@ public class SidekickWardrobe : MonoBehaviour
         }
     }
 
+    // 预览时清掉场景里烘焙好的示例角色，避免叠在一起。
     static void DestroyBakedPresets()
     {
         Transform[] all = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
@@ -637,6 +679,7 @@ public class SidekickWardrobe : MonoBehaviour
         }
     }
 
+    // 判断是否是 Sidekick 示例 / 烘焙预设物体名。
     static bool IsBakedPresetName(string name)
     {
         return name == "HumanSpecies_01"
@@ -646,6 +689,7 @@ public class SidekickWardrobe : MonoBehaviour
             || name.StartsWith("Example_", StringComparison.Ordinal);
     }
 
+    // 预览模式只保留请求的部件，关掉其它蒙皮。
     static HashSet<SkinnedMeshRenderer> KeepOnlyRequestedParts(GameObject character, List<SkinnedMeshRenderer> requested)
     {
         var keepNames = new HashSet<string>();
@@ -683,6 +727,7 @@ public class SidekickWardrobe : MonoBehaviour
         return live;
     }
 
+    // 关掉场景里不属于当前预览的其它蒙皮。
     static void HideForeignBodies(HashSet<SkinnedMeshRenderer> live)
     {
         SkinnedMeshRenderer[] all = FindObjectsByType<SkinnedMeshRenderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
@@ -694,6 +739,7 @@ public class SidekickWardrobe : MonoBehaviour
         }
     }
 
+    // 在预制体里找与零件名或槽位代码匹配的蒙皮。
     static SkinnedMeshRenderer FindPartRenderer(GameObject prefab, SidekickPart part)
     {
         SkinnedMeshRenderer[] renderers = prefab.GetComponentsInChildren<SkinnedMeshRenderer>(true);
@@ -725,6 +771,7 @@ public class SidekickWardrobe : MonoBehaviour
         return renderers[0];
     }
 
+    // 先查缓存，再向零件要模型；失败则返回空。
     GameObject ResolvePrefab(SidekickPart part)
     {
         if (part == null)
@@ -749,6 +796,7 @@ public class SidekickWardrobe : MonoBehaviour
         return null;
     }
 
+    // 从部件名里解析槽位代码。
     static string SlotOf(string partName)
     {
         foreach (CharacterPartType type in Enum.GetValues(typeof(CharacterPartType)))
@@ -761,6 +809,7 @@ public class SidekickWardrobe : MonoBehaviour
         return "";
     }
 
+    // 找列表里第一件 BASE 人体部件，用作必填槽回退。
     static string FirstBasePart(List<WardrobePart> parts)
     {
         for (int i = 0; i < parts.Count; i++)
@@ -772,6 +821,7 @@ public class SidekickWardrobe : MonoBehaviour
         return "";
     }
 
+    // 把 SK_ 资源名转成简短中文标签。
     static string FormatPartLabel(string name)
     {
         Match match = OutfitCode.Match(name);
@@ -796,15 +846,18 @@ public class SidekickWardrobe : MonoBehaviour
     }
 }
 
+// 可玩角色用：每帧把下颌骨锁回闭合，避免张嘴。
 public class SidekickJawLock : MonoBehaviour
 {
     Animator _animator;
 
+    // 缓存 Animator。
     void Awake()
     {
         _animator = GetComponent<Animator>();
     }
 
+    // 把人类骨骼的下颌旋到单位四元数。
     void LateUpdate()
     {
         if (_animator != null && _animator.isHuman)
@@ -812,6 +865,7 @@ public class SidekickJawLock : MonoBehaviour
     }
 }
 
+// 预览角色用：锁下颌骨骼，并把张嘴相关 BlendShape 压回闭合。
 public class SidekickMouthClosed : MonoBehaviour
 {
     struct ShapeBind
@@ -826,6 +880,7 @@ public class SidekickMouthClosed : MonoBehaviour
     Quaternion _closedJaw;
     ShapeBind[] _shapes = Array.Empty<ShapeBind>();
 
+    // 记下闭合下颌姿态并缓存相关 BlendShape。
     void Awake()
     {
         _animator = GetComponent<Animator>();
@@ -836,6 +891,7 @@ public class SidekickMouthClosed : MonoBehaviour
         ApplyCached();
     }
 
+    // 每帧强制闭合下颌骨骼与 BlendShape。
     void LateUpdate()
     {
         ApplyCached();
@@ -845,6 +901,7 @@ public class SidekickMouthClosed : MonoBehaviour
             _jaw.localRotation = _closedJaw;
     }
 
+    // 收集 jawClose / mouthClose / jawOpen 相关 BlendShape。
     void CacheShapes()
     {
         var list = new List<ShapeBind>(8);
@@ -878,6 +935,7 @@ public class SidekickMouthClosed : MonoBehaviour
         _shapes = list.ToArray();
     }
 
+    // 把缓存的闭合权重写回蒙皮。
     void ApplyCached()
     {
         for (int i = 0; i < _shapes.Length; i++)
@@ -888,6 +946,7 @@ public class SidekickMouthClosed : MonoBehaviour
         }
     }
 
+    // 递归按名字找骨骼。
     static Transform FindNamed(Transform root, string name)
     {
         if (root.name == name)

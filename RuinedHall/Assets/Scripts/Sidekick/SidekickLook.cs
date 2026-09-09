@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
+/// <summary>
+/// 玩家在 TestBody 里保存的 Sidekick 外观，落到 persistentDataPath 的 JSON。
+/// </summary>
 [Serializable]
 public sealed class SidekickLook
 {
@@ -19,6 +22,7 @@ public sealed class SidekickLook
 
     public static bool Exists => File.Exists(FilePath);
 
+    /// <summary>从当前装备槽和身材参数生成一份可序列化外观。</summary>
     public static SidekickLook From(
         IReadOnlyDictionary<string, string> equipped,
         float skinny,
@@ -50,6 +54,7 @@ public sealed class SidekickLook
         return look;
     }
 
+    /// <summary>把保存的槽位写回运行时装备字典。</summary>
     public void WriteTo(Dictionary<string, string> equipped)
     {
         if (equipped == null || slots == null || parts == null)
@@ -64,12 +69,14 @@ public sealed class SidekickLook
         }
     }
 
+    /// <summary>覆盖写入 JSON。</summary>
     public void Save()
     {
         File.WriteAllText(FilePath, JsonUtility.ToJson(this, true));
         Debug.Log("SidekickLook: 已保存到 " + FilePath);
     }
 
+    /// <summary>读盘；文件坏了返回 null。</summary>
     public static SidekickLook Load()
     {
         if (!Exists)

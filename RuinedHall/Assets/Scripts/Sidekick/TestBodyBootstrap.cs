@@ -4,8 +4,10 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering.Universal;
 
+// 换装预览场景引导：建衣柜、补地面灯光、对准相机并弹出 HUD。
 public class TestBodyBootstrap : MonoBehaviour
 {
+    // 创建隔离预览衣柜，并补齐相机 / 地面 / 灯光。
     void Awake()
     {
         var host = new GameObject("SidekickPreview");
@@ -20,6 +22,7 @@ public class TestBodyBootstrap : MonoBehaviour
         StartCoroutine(InitWardrobe(wardrobe, host));
     }
 
+    // 等衣柜初始化完成后对准角色并弹出换装 HUD。
     IEnumerator InitWardrobe(SidekickWardrobe wardrobe, GameObject character)
     {
         var task = wardrobe.Initialize();
@@ -44,6 +47,7 @@ public class TestBodyBootstrap : MonoBehaviour
         SidekickWardrobeHud.Create(wardrobe);
     }
 
+    // 给主相机补上 URP 附加数据。
     static void EnsureUrpCamera(Camera cam)
     {
         if (cam == null)
@@ -52,6 +56,7 @@ public class TestBodyBootstrap : MonoBehaviour
             cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
     }
 
+    // 按角色包围盒把相机拉到正面合适距离。
     static void FrameCamera(GameObject character)
     {
         Camera cam = Camera.main;
@@ -86,6 +91,7 @@ public class TestBodyBootstrap : MonoBehaviour
         cam.clearFlags = CameraClearFlags.SolidColor;
     }
 
+    // 没有地面时铺一块深色 URP 平面。
     static void EnsureGround()
     {
         if (GameObject.Find("TestBodyGround") != null)
@@ -106,6 +112,7 @@ public class TestBodyBootstrap : MonoBehaviour
         }
     }
 
+    // 把方向光提亮并补上 URP 灯光数据。
     static void BumpLight()
     {
         Light light = FindFirstObjectByType<Light>();
@@ -118,10 +125,12 @@ public class TestBodyBootstrap : MonoBehaviour
     }
 }
 
+// 鼠标拖拽水平旋转预览角色；指针在 UI 上时不转。
 public class SidekickTurntable : MonoBehaviour
 {
     [SerializeField] float degreesPerPixel = 0.28f;
 
+    // 按鼠标水平位移绕世界 Y 轴旋转。
     void Update()
     {
         Mouse mouse = Mouse.current;

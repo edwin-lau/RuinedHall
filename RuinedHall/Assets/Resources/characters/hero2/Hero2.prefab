@@ -302,6 +302,7 @@ GameObject:
   - component: {fileID: 3512047825564391488}
   - component: {fileID: 1295280102643936682}
   - component: {fileID: 6357291887406825685}
+  - component: {fileID: 7845123901234567890}
   m_Layer: 0
   m_Name: Hero2
   m_TagString: Player
@@ -385,8 +386,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5cdb382c8f7d4441b3d7fda5ccd8031e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HeroController
-  walkSpeed: 6.4
-  runSpeed: 11.1
+  walkSpeed: 1.45
+  runSpeed: 3.35
   rotateSpeed: 720
   jumpHeight: 2.45
   gravity: -78
@@ -397,6 +398,34 @@ MonoBehaviour:
   maxHealth: 200
   punchDamage: 20
   punchRange: 1.4
+--- !u!114 &7845123901234567890
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1518584750564167949}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8a4f2c91e7b643d0a9e5f8123c4d5678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HeroLocomotionFeel
+  walkAnimReferenceSpeed: 1.48
+  runAnimReferenceSpeed: 3.55
+  minAnimSpeed: 0.7
+  maxAnimSpeed: 1.08
+  walkFootContacts:
+  - 0.1
+  - 0.6
+  runFootContacts:
+  - 0.08
+  - 0.54
+  walkFootVolume: 0.28
+  runFootVolume: 0.76
+  minSpeedForFootsteps: 0.35
+  maxActiveDustBursts: 6
+  walkDustCount: 8
+  runDustCount: 12
 --- !u!1 &1750621091152016965
 GameObject:
   m_ObjectHideFlags: 0

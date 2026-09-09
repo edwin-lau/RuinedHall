@@ -4,6 +4,9 @@ using UnityEditor;
 using UnityEditor.Animations;
 using UnityEngine;
 
+/// <summary>
+/// 从 Soldier_Female@Punching.fbx 抽出拳击片段，覆盖 Punching.anim 并接到 Hero.controller 的 Punch 状态。
+/// </summary>
 public static class ApplyPunchingRetarget
 {
     const string FlagPath = "Temp/ApplyPunchingRetarget.flag";
@@ -11,6 +14,7 @@ public static class ApplyPunchingRetarget
     const string PunchingAnimPath = "Assets/Resources/characters/hero/Punching.anim";
     const string ControllerPath = "Assets/Resources/characters/hero/Hero.controller";
 
+    /// <summary>编辑器加载时挂上检测标记文件的回调。</summary>
     [InitializeOnLoadMethod]
     static void Register()
     {
@@ -18,6 +22,7 @@ public static class ApplyPunchingRetarget
         EditorApplication.update += Tick;
     }
 
+    /// <summary>看到标记文件后执行一次 Apply，然后卸掉回调。</summary>
     static void Tick()
     {
         if (!File.Exists(FlagPath))
@@ -36,11 +41,13 @@ public static class ApplyPunchingRetarget
         }
     }
 
+    /// <summary>强制重导 FBX，把片段拷进 Punching.anim 并接到 Punch 状态。</summary>
     [MenuItem("Build/Apply Punching Retarget")]
     public static void Apply()
     {
         AssetDatabase.ImportAsset(FbxPath, ImportAssetOptions.ForceUpdate);
 
+        // Generic 导入并关掉循环，保证拳击是一次性片段
         var importer = AssetImporter.GetAtPath(FbxPath) as ModelImporter;
         if (importer != null)
         {
@@ -69,6 +76,7 @@ public static class ApplyPunchingRetarget
             return;
         }
 
+        // 覆盖或新建 Punching.anim，再接到控制器 Punch 状态
         var dest = AssetDatabase.LoadAssetAtPath<AnimationClip>(PunchingAnimPath);
         if (dest == null)
         {

@@ -4,6 +4,9 @@ using UnityEngine;
 using UnityEngine.Animations;
 using UnityEngine.Playables;
 
+/// <summary>
+/// 用 PlayableGraph 播放角色动作配置：交叉淡入、特效 cue、暂停与循环。
+/// </summary>
 [RequireComponent(typeof(Animator))]
 public sealed class CharacterActionPlayer : MonoBehaviour
 {
@@ -32,12 +35,19 @@ public sealed class CharacterActionPlayer : MonoBehaviour
     public event Action<string> ActionStarted;
     public event Action<string> ActionCompleted;
 
+    /// <summary>当前动作配置。</summary>
     public CharacterActionProfile Profile => profile;
+    /// <summary>正在播放的动作定义。</summary>
     public CharacterActionDefinition CurrentAction => _currentAction;
+    /// <summary>当前动作 Id。</summary>
     public string CurrentActionId => _currentAction?.Id;
+    /// <summary>是否处于暂停。</summary>
     public bool IsPaused => _paused;
+    /// <summary>当前动作已播放秒数。</summary>
     public float ActionElapsed => _actionElapsed;
+    /// <summary>当前动作按时速算出的时长。</summary>
     public float PlaybackLength => AnimPlayback.Length(_currentAction, playbackSpeed);
+    /// <summary>当前片段归一化时间。</summary>
     public float NormalizedTime
     {
         get
@@ -48,6 +58,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         }
     }
 
+    /// <summary>非循环动作是否已播完。</summary>
     public bool PlaybackFinished
     {
         get
@@ -60,6 +71,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         }
     }
 
+    // 关掉根运动并搭建 PlayableGraph。
     void Awake()
     {
         _animator = GetComponent<Animator>();
@@ -68,6 +80,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         InitializeGraph();
     }
 
+    // 启用时播放图，并按需切入默认动作。
     void OnEnable()
     {
         if (_graph.IsValid())
@@ -77,6 +90,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
             Play(profile.DefaultAction, true);
     }
 
+    // 推进交叉淡入、当前动作计时与特效寿命。
     void Update()
     {
         if (_paused)
@@ -88,12 +102,14 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         UpdateEffects(deltaTime);
     }
 
+    // 停掉 PlayableGraph。
     void OnDisable()
     {
         if (_graph.IsValid())
             _graph.Stop();
     }
 
+    // 清特效并销毁图。
     void OnDestroy()
     {
         ClearEffects();
@@ -101,6 +117,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
             _graph.Destroy();
     }
 
+    /// <summary>切换动作配置，可选立即播放默认动作。</summary>
     public void SetProfile(CharacterActionProfile newProfile, bool playDefault = true)
     {
         profile = newProfile;
@@ -108,6 +125,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
             Play(profile.DefaultAction, true);
     }
 
+    /// <summary>播放指定动作，可交叉淡入并触发特效 cue。</summary>
     public bool Play(string actionId, bool restart = false)
     {
         if (profile == null || !profile.TryGet(actionId, out CharacterActionDefinition action))
@@ -130,12 +148,14 @@ public sealed class CharacterActionPlayer : MonoBehaviour
             _currentAction != null &&
             string.Equals(_currentAction.Id, action.Id, StringComparison.OrdinalIgnoreCase))
         {
+            // 同一动作且不强制重播，直接视为成功。
             return true;
         }
 
         if (!_graph.IsValid())
             InitializeGraph();
 
+        // 双缓冲 mixer：切到另一路输入，避免打断当前片段。
         int nextInput = _currentInput < 0 ? 0 : 1 - _currentInput;
         DisconnectInput(nextInput);
 
@@ -160,6 +180,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         else if (cueCount > 0)
             Array.Clear(_firedCues, 0, cueCount);
 
+        // 有上一段动作才交叉淡入，否则立刻切满权重。
         _fadeDuration = _previousInput < 0 ? 0f : action.CrossFade;
         _fadeElapsed = 0f;
         _isFading = _fadeDuration > 0f;
@@ -175,6 +196,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         return true;
     }
 
+    /// <summary>暂停动画与粒子特效。</summary>
     public void Pause()
     {
         if (_paused)
@@ -186,6 +208,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         SetParticlePause(true);
     }
 
+    /// <summary>恢复动画与粒子特效。</summary>
     public void Resume()
     {
         _paused = false;
@@ -194,6 +217,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         SetParticlePause(false);
     }
 
+    /// <summary>停止当前动作并清掉 mixer 输入与特效。</summary>
     public void Stop()
     {
         _currentAction = null;
@@ -206,6 +230,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         ClearEffects();
     }
 
+    /// <summary>设置播放倍速。</summary>
     public void SetPlaybackSpeed(float speed)
     {
         playbackSpeed = Mathf.Max(0f, speed);
@@ -213,6 +238,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
             _mixer.SetSpeed(playbackSpeed);
     }
 
+    /// <summary>从配置中查找动作定义。</summary>
     public bool TryGetAction(
         string actionId,
         out CharacterActionDefinition action)
@@ -221,6 +247,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         return profile != null && profile.TryGet(actionId, out action);
     }
 
+    // 创建双输入 AnimationMixer 并接到 Animator。
     void InitializeGraph()
     {
         if (_graph.IsValid())
@@ -236,6 +263,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         _graph.Play();
     }
 
+    // 在新旧片段之间插值 mixer 权重，淡完断开旧输入。
     void UpdateCrossFade(float deltaTime)
     {
         if (!_isFading)
@@ -256,6 +284,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         _previousInput = -1;
     }
 
+    // 推进动作时间、循环取模，并在播完时发出完成事件。
     void UpdateCurrentAction(float deltaTime)
     {
         if (!_hasCurrentPlayable || _currentAction == null)
@@ -277,6 +306,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         ActionCompleted?.Invoke(_currentAction.Id);
     }
 
+    // 到点触发尚未发射的特效 cue。
     void FireDueCues()
     {
         if (_currentAction == null)
@@ -299,6 +329,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         }
     }
 
+    // 在挂点生成预制体或内置粒子特效。
     void SpawnEffect(CharacterEffectCue cue)
     {
         Transform socket = string.IsNullOrWhiteSpace(cue.SocketName)
@@ -310,6 +341,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         Material ownedMaterial = null;
         if (cue.Kind == CharacterEffectKind.Prefab && cue.Prefab != null)
         {
+            // 预制体可跟随挂点，或生成在世界空间一次性位置。
             if (cue.FollowSocket)
             {
                 instance = Instantiate(cue.Prefab, socket);
@@ -332,6 +364,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         _activeEffects.Add(new ActiveEffect(instance, ownedMaterial, cue.Lifetime));
     }
 
+    // 按 cue 类型搭一簇尘土或火花粒子。
     static GameObject CreateBuiltInEffect(
         CharacterEffectCue cue,
         Transform socket,
@@ -354,6 +387,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         ParticleSystem particles = effect.AddComponent<ParticleSystem>();
         particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 
+        // 尘土用圆面慢粒子，其它用小球爆发。
         ParticleSystem.MainModule main = particles.main;
         main.duration = 0.35f;
         main.loop = false;
@@ -393,6 +427,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         return effect;
     }
 
+    // 到期销毁仍在播的特效实例。
     void UpdateEffects(float deltaTime)
     {
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
@@ -407,6 +442,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         }
     }
 
+    // 暂停或恢复所有活动粒子。
     void SetParticlePause(bool pause)
     {
         foreach (ActiveEffect effect in _activeEffects)
@@ -425,6 +461,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         }
     }
 
+    // 立刻销毁全部活动特效。
     void ClearEffects()
     {
         foreach (ActiveEffect effect in _activeEffects)
@@ -432,6 +469,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         _activeEffects.Clear();
     }
 
+    // 断开 mixer 某一路输入并销毁对应 playable。
     void DisconnectInput(int input)
     {
         if (!_mixer.IsValid() || input < 0 || input >= _mixer.GetInputCount())
@@ -446,6 +484,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         _mixer.SetInputWeight(input, 0f);
     }
 
+    // 按名称递归查找子节点。
     static Transform FindChild(Transform root, string childName)
     {
         foreach (Transform child in root)
@@ -460,12 +499,14 @@ public sealed class CharacterActionPlayer : MonoBehaviour
         return null;
     }
 
+    /// <summary>跟踪一个已生成特效及其可选自有材质。</summary>
     sealed class ActiveEffect
     {
         public readonly GameObject Instance;
         readonly Material _ownedMaterial;
         public float Remaining;
 
+        /// <summary>记录实例、自有材质与剩余寿命。</summary>
         public ActiveEffect(GameObject instance, Material ownedMaterial, float lifetime)
         {
             Instance = instance;
@@ -473,6 +514,7 @@ public sealed class CharacterActionPlayer : MonoBehaviour
             Remaining = lifetime;
         }
 
+        /// <summary>销毁特效物体与自有材质。</summary>
         public void Destroy()
         {
             if (Instance != null)
